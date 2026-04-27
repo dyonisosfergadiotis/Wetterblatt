@@ -1,32 +1,26 @@
-//
-//  Weather_AppApp.swift
-//  Weather App
-//
-//  Created by Dyonisos Fergadiotis on 23.04.26.
-//
-
 import SwiftUI
-import SwiftData
 
 @main
 struct Weather_AppApp: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Item.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var appModel: AppModel
 
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
+    init() {
+        let container = AppContainer()
+        _appModel = State(initialValue: container.makeAppModel())
+    }
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            AppShellView(model: appModel)
+                .task {
+                    await appModel.start()
+                }
         }
-        .modelContainer(sharedModelContainer)
+        .onChange(of: scenePhase) { _, newPhase in
+            Task {
+                await appModel.handleScenePhase(newPhase)
+            }
+        }
     }
 }

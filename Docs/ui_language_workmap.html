@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>UI Language Workmap — Wetterblatt</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Mono:wght@400;500&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Mono', monospace;
+      background: #f5f0e8;
+      color: #2a2015;
+      padding: 24px;
+    }
+    .doc {
+      max-width: 760px;
+      margin: 0 auto;
+    }
+    .title {
+      font-family: 'Playfair Display', serif;
+      font-size: 26px;
+      font-style: italic;
+      margin-bottom: 4px;
+    }
+    .sub {
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #9a8f7e;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #c8bfaa;
+      margin-bottom: 22px;
+    }
+    .section {
+      margin-bottom: 26px;
+    }
+    .section-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 9px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #9a8f7e;
+      margin-bottom: 12px;
+    }
+    .section-head::after {
+      content: "";
+      flex: 1;
+      height: 0.5px;
+      background: #c8bfaa;
+    }
+    .hero-card,
+    .card,
+    .rule,
+    .copy-line {
+      background: #ede7db;
+      border: 0.5px solid #c8bfaa;
+      border-radius: 6px;
+    }
+    .hero-card {
+      padding: 14px 16px;
+      display: grid;
+      gap: 10px;
+    }
+    .kicker {
+      font-size: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #9a8f7e;
+    }
+    .hero-grid,
+    .token-grid,
+    .state-grid,
+    .rule-grid,
+    .copy-grid {
+      display: grid;
+      gap: 8px;
+    }
+    .hero-grid {
+      grid-template-columns: 1.5fr 1fr;
+    }
+    .token-grid,
+    .state-grid,
+    .rule-grid,
+    .copy-grid {
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+    .name {
+      font-family: 'Playfair Display', serif;
+      font-size: 28px;
+      font-weight: 700;
+    }
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .tag,
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 7px;
+      border-radius: 4px;
+      font-size: 7px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .tag {
+      background: rgba(42,32,21,0.07);
+      color: #6b6050;
+      border: 0.5px solid #c8bfaa;
+    }
+    .chip-online {
+      background: rgba(90,122,158,0.10);
+      color: #3d5f7e;
+      border: 0.5px solid rgba(90,122,158,0.35);
+    }
+    .chip-offline {
+      background: rgba(61,46,26,0.10);
+      color: #3d2e1a;
+      border: 0.5px solid rgba(61,46,26,0.35);
+    }
+    .chip-update {
+      background: rgba(200,149,90,0.12);
+      color: #7a5020;
+      border: 0.5px solid rgba(200,149,90,0.35);
+    }
+    .metric {
+      font-size: 8px;
+      color: #9a8f7e;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .metric-value {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px;
+      line-height: 1.2;
+    }
+    .metric-copy {
+      font-size: 9px;
+      line-height: 1.55;
+      color: #6b6050;
+    }
+    .card {
+      padding: 12px 14px;
+    }
+    .card-title {
+      font-size: 10px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+    .card-sub {
+      font-size: 8px;
+      color: #9a8f7e;
+      line-height: 1.5;
+      margin-bottom: 8px;
+    }
+    .state-line {
+      font-size: 8px;
+      color: #2a2015;
+      line-height: 1.7;
+    }
+    .swatch-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .swatch {
+      width: 44px;
+      height: 44px;
+      border-radius: 4px;
+      border: 0.5px solid rgba(0,0,0,0.08);
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      padding-bottom: 4px;
+      font-size: 6px;
+      color: rgba(0,0,0,0.55);
+    }
+    .rule {
+      display: flex;
+      gap: 10px;
+      padding: 9px 12px;
+      align-items: flex-start;
+    }
+    .rule-num {
+      width: 18px;
+      flex-shrink: 0;
+      font-size: 8px;
+      color: #9a8f7e;
+    }
+    .rule-text {
+      font-size: 9px;
+      line-height: 1.6;
+    }
+    .copy-line {
+      padding: 10px 12px;
+    }
+    .copy-label {
+      font-size: 8px;
+      color: #9a8f7e;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .copy-text {
+      font-size: 10px;
+      color: #2a2015;
+      line-height: 1.55;
+    }
+    .sample-panel {
+      background: #2a2015;
+      color: #f5f0e8;
+      border-radius: 6px;
+      padding: 14px;
+      min-height: 146px;
+      position: relative;
+      overflow: hidden;
+    }
+    .sample-panel::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 15% 20%, rgba(200,149,90,0.12), transparent 25%),
+        radial-gradient(circle at 80% 10%, rgba(138,176,204,0.14), transparent 25%);
+      pointer-events: none;
+    }
+    .sample-city {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px;
+      margin-bottom: 3px;
+    }
+    .sample-temp {
+      font-family: 'Playfair Display', serif;
+      font-size: 40px;
+      line-height: 1;
+      margin: 6px 0 10px;
+    }
+    .sample-meta {
+      font-size: 8px;
+      color: #c8bfaa;
+      line-height: 1.6;
+    }
+    .sample-strip {
+      display: flex;
+      gap: 6px;
+      margin-top: 12px;
+    }
+    .sample-hour {
+      flex: 1;
+      background: rgba(255,255,255,0.07);
+      border: 0.5px solid rgba(255,255,255,0.10);
+      border-radius: 5px;
+      padding: 6px 4px;
+      text-align: center;
+    }
+    .sample-hour.past {
+      opacity: 0.42;
+    }
+    .sample-hour.active {
+      background: rgba(200,149,90,0.18);
+      border-color: rgba(200,149,90,0.45);
+    }
+    .sample-hour-time {
+      font-size: 7px;
+      color: #c8bfaa;
+      margin-bottom: 2px;
+    }
+    .sample-hour-temp {
+      font-family: 'Playfair Display', serif;
+      font-size: 14px;
+    }
+    code {
+      font-family: 'DM Mono', monospace;
+      background: rgba(0,0,0,0.06);
+      padding: 1px 4px;
+      border-radius: 2px;
+      font-size: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="doc">
+    <div class="title">UI Language Workmap</div>
+    <div class="sub">Codex Spec — Wetterblatt · Offline-First Weather UX · v2.0</div>
+
+    <div class="section">
+      <div class="section-head">App Name & Produktgefühl</div>
+      <div class="hero-card">
+        <div class="hero-grid">
+          <div>
+            <div class="kicker">Empfohlener Name</div>
+            <div class="name">Wetterblatt</div>
+            <div style="font-size:10px; line-height:1.65; color:#6b6050; margin-top:8px;">
+              Klingt wie ein altes Wetterjournal, passt zum Print-/Vintage-Look und wirkt gleichzeitig präzise. Die App soll nicht verspielt meteorologisch tun, sondern ruhig, glaubwürdig und zeitbewusst wirken.
+            </div>
+          </div>
+          <div>
+            <div class="metric">Brand Pillars</div>
+            <div class="tag-row">
+              <span class="tag">Zeitwahr</span>
+              <span class="tag">Offline lesbar</span>
+              <span class="tag">Ruhig</span>
+              <span class="tag">Verlässlich</span>
+              <span class="tag">Taktile Details</span>
+            </div>
+          </div>
+        </div>
+        <div class="sample-panel">
+          <div class="tag-row">
+            <span class="chip chip-offline">Offline</span>
+            <span class="chip chip-update">Stand 14:08</span>
+          </div>
+          <div class="sample-city">Berlin</div>
+          <div class="sample-temp">14°</div>
+          <div class="sample-meta">Aktuell aus zwischengespeicherter Prognose für jetzt<br>Neue Daten werden geladen, sobald Verbindung da ist</div>
+          <div class="sample-strip">
+            <div class="sample-hour past">
+              <div class="sample-hour-time">13</div>
+              <div class="sample-hour-temp">13°</div>
+            </div>
+            <div class="sample-hour active">
+              <div class="sample-hour-time">Jetzt</div>
+              <div class="sample-hour-temp">14°</div>
+            </div>
+            <div class="sample-hour">
+              <div class="sample-hour-time">15</div>
+              <div class="sample-hour-temp">14°</div>
+            </div>
+            <div class="sample-hour">
+              <div class="sample-hour-time">16</div>
+              <div class="sample-hour-temp">15°</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">Visuelle Tokens</div>
+      <div class="swatch-row">
+        <div class="swatch" style="background:#f5f0e8;">cream</div>
+        <div class="swatch" style="background:#ede7db;">surface</div>
+        <div class="swatch" style="background:#ddd5c5;">muted</div>
+        <div class="swatch" style="background:#c8bfaa;">border</div>
+        <div class="swatch" style="background:#9a8f7e;">secondary</div>
+        <div class="swatch" style="background:#6b6050; color:white;">tertiary</div>
+        <div class="swatch" style="background:#2a2015; color:#f5f0e8;">ink</div>
+        <div class="swatch" style="background:#5a7a9e; color:white;">rain</div>
+        <div class="swatch" style="background:#c8955a;">sun</div>
+      </div>
+      <div class="token-grid">
+        <div class="card">
+          <div class="card-title">Typografie</div>
+          <div class="card-sub">Serif für Wertigkeit, Mono für Datenhaftigkeit</div>
+          <div class="state-line"><strong>Hero:</strong> Playfair Display italic/bold</div>
+          <div class="state-line"><strong>UI Labels:</strong> DM Mono uppercase</div>
+          <div class="state-line"><strong>Skala:</strong> 8 · 9 · 11 · 14 · 18 · 36 px</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Grundlook</div>
+          <div class="card-sub">Eher Papier als Glas, eher Patina als Glow</div>
+          <div class="state-line">Karten mit <code>0.5px</code> Border, <code>6px</code> Radius</div>
+          <div class="state-line">Subtiles Grain Overlay, maximal <code>0.04</code> Opacity</div>
+          <div class="state-line">Akzente nur für Wetterzustand und Status, nicht für Deko</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Zeitstempel-Stil</div>
+          <div class="card-sub">Zeit muss immer lesbar und lokal korrekt wirken</div>
+          <div class="state-line"><code>Do. 23. Apr · 14:08</code></div>
+          <div class="state-line">Relative Labels sparsam: <code>vor 6 Min.</code></div>
+          <div class="state-line">Alle Ortszeiten in der Zeitzone des Ortes, nicht blind in Device-Zeit</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">Statussprache Für Offline & Frische</div>
+      <div class="state-grid">
+        <div class="card">
+          <div class="card-title">Fresh Live</div>
+          <div class="card-sub">Netz verfügbar, aktuelle Daten frisch</div>
+          <div class="tag-row" style="margin-bottom:8px;">
+            <span class="chip chip-online">Jetzt</span>
+            <span class="chip chip-update">Aktualisiert vor 2 Min.</span>
+          </div>
+          <div class="state-line">Copy: „Live aktualisiert“</div>
+          <div class="state-line">Kein Warnbanner, nur dezenter Freshness-Hinweis</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Cached Offline</div>
+          <div class="card-sub">Kein Netz, letzter Snapshot ist vorhanden</div>
+          <div class="tag-row" style="margin-bottom:8px;">
+            <span class="chip chip-offline">Offline</span>
+            <span class="chip chip-update">Stand 14:08</span>
+          </div>
+          <div class="state-line">Copy: „Zeige gespeicherte Prognose für jetzt“</div>
+          <div class="state-line">Wichtig: nicht so tun, als wäre die Messung live</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Updating</div>
+          <div class="card-sub">Cache ist sichtbar, neue Daten kommen im Hintergrund</div>
+          <div class="tag-row" style="margin-bottom:8px;">
+            <span class="chip chip-update">Suche neue Daten…</span>
+          </div>
+          <div class="state-line">Copy: „Aktualisiere Prognose“</div>
+          <div class="state-line">Kein Full-Screen Loader, Inhalt bleibt benutzbar</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Stale Snapshot</div>
+          <div class="card-sub">Cache alt, aber besser als leer</div>
+          <div class="tag-row" style="margin-bottom:8px;">
+            <span class="chip chip-offline">Offline</span>
+            <span class="chip chip-update">Zuletzt gestern 22:10</span>
+          </div>
+          <div class="state-line">Copy: „Keine frischen Wetterdaten verfügbar“</div>
+          <div class="state-line">Hourly Strip trotzdem ab <code>now</code> aus dem letzten Forecast ableiten</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">Zeitwahrheit In Der UI</div>
+      <div class="rule-grid">
+        <div class="rule">
+          <div class="rule-num">01</div>
+          <div class="rule-text">Die Hero-Card zeigt immer <strong>jetzt</strong> in Ortszeit. Wenn keine frische Beobachtung da ist, wird „jetzt“ aus dem nächsten passenden Forecast-Slot abgeleitet und klar als Cache/Fallback markiert.</div>
+        </div>
+        <div class="rule">
+          <div class="rule-num">02</div>
+          <div class="rule-text">Die Stundenleiste startet nie an der Fetch-Zeit. Sie startet am aktuellen lokalen Zeitslot oder markiert vergangene Slots visuell als vergangen.</div>
+        </div>
+        <div class="rule">
+          <div class="rule-num">03</div>
+          <div class="rule-text">Sonnenaufgang, Sonnenuntergang, „vor x Minuten“ und „in x Stunden“ werden aus einem laufenden Clock-Tick aktualisiert, nicht nur nach Netzwerk-Refresh.</div>
+        </div>
+        <div class="rule">
+          <div class="rule-num">04</div>
+          <div class="rule-text">Wenn ein neuer Forecast eintrifft, wird die UI weich zusammengeführt: Werte aktualisieren, aber Scroll-Position, ausgewählte Stunde und visuelle Orientierung bleiben erhalten.</div>
+        </div>
+        <div class="rule">
+          <div class="rule-num">05</div>
+          <div class="rule-text">Vergangene Daten sind erlaubt, aber nie als „aktuell“ gelabelt. Sobald ein Hour-Slot in der Vergangenheit liegt, verliert er Fokus und wird gedimmt.</div>
+        </div>
+        <div class="rule">
+          <div class="rule-num">06</div>
+          <div class="rule-text">Jeder Ort rendert in seiner eigenen Zeitzone. Ortswechsel darf keine Mischzeit erzeugen, etwa Berliner Zeit für New York Forecast-Timestamps.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">Komponenten Für Frische & Vertrauen</div>
+      <div class="token-grid">
+        <div class="card">
+          <div class="card-title">Freshness Stamp</div>
+          <div class="card-sub">Kleine Zeile direkt unter Ort und Temperatur</div>
+          <div class="state-line">Beispiel: „Stand 14:08 · lokal“</div>
+          <div class="state-line">Nur anzeigen, wenn sie Kontext stiftet</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Offline Ribbon</div>
+          <div class="card-sub">Dezente Banner-Fläche, keine alarmistische Toasts</div>
+          <div class="state-line">Text: „Offline. Zeige gespeicherte Prognose.“</div>
+          <div class="state-line">Farbe: warm dunkles Braun statt Fehlerrot</div>
+        </div>
+        <div class="card">
+          <div class="card-title">New Data Pulse</div>
+          <div class="card-sub">Kurzer Akzent, wenn neue Daten gemerged wurden</div>
+          <div class="state-line">1 Soft-Haptic + kurzer Highlight-Flash auf Header</div>
+          <div class="state-line">Nie aufdringlich, kein modaler Hinweis</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Hour Cursor</div>
+          <div class="card-sub">Aktive Stunde muss visuell und semantisch „jetzt“ trennen</div>
+          <div class="state-line">Label: <code>Jetzt</code> statt rein numerischer Stunde</div>
+          <div class="state-line">Bei Offline weiterhin möglich, da aus Timeline berechnet</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">Microcopy Beispiele</div>
+      <div class="copy-grid">
+        <div class="copy-line">
+          <div class="copy-label">Home Header</div>
+          <div class="copy-text">„Stand 14:08 · Berlin lokal“</div>
+        </div>
+        <div class="copy-line">
+          <div class="copy-label">Offline State</div>
+          <div class="copy-text">„Offline. Zeige gespeicherte Prognose für jetzt.“</div>
+        </div>
+        <div class="copy-line">
+          <div class="copy-label">Refresh Success</div>
+          <div class="copy-text">„Neue Wetterdaten eingetroffen.“</div>
+        </div>
+        <div class="copy-line">
+          <div class="copy-label">Stale Fallback</div>
+          <div class="copy-text">„Keine frischen Beobachtungen. Werte aus der letzten Prognose.“</div>
+        </div>
+        <div class="copy-line">
+          <div class="copy-label">Sun Event</div>
+          <div class="copy-text">„Sonnenuntergang in 48 Min.“</div>
+        </div>
+        <div class="copy-line">
+          <div class="copy-label">Hourly Rail</div>
+          <div class="copy-text">„Jetzt“ · „15 Uhr“ · „16 Uhr“ statt Slots von gestern weiterzuzeigen</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">Interaktionsregeln</div>
+      <div class="rule-grid">
+        <div class="rule">
+          <div class="rule-num">01</div>
+          <div class="rule-text">Pull-to-refresh lädt inkrementell nach. Währenddessen bleibt der Cache lesbar, inklusive Scroll und aktuell ausgewählter Stunde.</div>
+        </div>
+        <div class="rule">
+          <div class="rule-num">02</div>
+          <div class="rule-text">Wenn ein Tick die Stunde wechselt, animiert die Hours-Leiste weich zum neuen „Jetzt“-Slot. Kein harter Sprung, kein Reset an den Anfang.</div>
+        </div>
+        <div class="rule">
+          <div class="rule-num">03</div>
+          <div class="rule-text">Alle Haptics bleiben funktional: <code>.selection</code> im Chart, <code>.light</code> bei Tab-Wechsel, <code>.success</code> wenn neue Daten gemerged wurden.</div>
+        </div>
+        <div class="rule">
+          <div class="rule-num">04</div>
+          <div class="rule-text">Offline ist ein Zustand, kein Fehlerdialog. Die App soll sich weiterhin wie eine benutzbare Wetteransicht anfühlen, nicht wie ein gescheiterter Request.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

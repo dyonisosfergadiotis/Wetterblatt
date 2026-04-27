@@ -6,8 +6,41 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		E5E7E82B2F9A5EC30060BF97 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E5E7E82A2F9A5EC30060BF97 /* WidgetKit.framework */; };
+		E5E7E82D2F9A5EC30060BF97 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E5E7E82C2F9A5EC30060BF97 /* SwiftUI.framework */; };
+		E5E7E83E2F9A5EC50060BF97 /* Wetterblatt WidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E5E7E8282F9A5EC30060BF97 /* Wetterblatt WidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		E5E7E83C2F9A5EC50060BF97 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E5E7E77C2F9A461A0060BF97 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E5E7E8272F9A5EC30060BF97;
+			remoteInfo = "Wetterblatt WidgetExtension";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		E5E7E83F2F9A5EC50060BF97 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				E5E7E83E2F9A5EC50060BF97 /* Wetterblatt WidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		E5E7E7842F9A461A0060BF97 /* Weather App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Weather App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		E5E7E8282F9A5EC30060BF97 /* Wetterblatt WidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Wetterblatt WidgetExtension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		E5E7E82A2F9A5EC30060BF97 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		E5E7E82C2F9A5EC30060BF97 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -17,6 +50,13 @@
 				Info.plist,
 			);
 			target = E5E7E7832F9A461A0060BF97 /* Weather App */;
+		};
+		E5E7E8432F9A5EC50060BF97 /* Exceptions for "Wetterblatt Widget" folder in "Wetterblatt WidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = E5E7E8272F9A5EC30060BF97 /* Wetterblatt WidgetExtension */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -29,6 +69,14 @@
 			path = "Weather App";
 			sourceTree = "<group>";
 		};
+		E5E7E82E2F9A5EC30060BF97 /* Wetterblatt Widget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				E5E7E8432F9A5EC50060BF97 /* Exceptions for "Wetterblatt Widget" folder in "Wetterblatt WidgetExtension" target */,
+			);
+			path = "Wetterblatt Widget";
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -39,6 +87,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E5E7E8252F9A5EC30060BF97 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E5E7E82D2F9A5EC30060BF97 /* SwiftUI.framework in Frameworks */,
+				E5E7E82B2F9A5EC30060BF97 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -46,6 +103,8 @@
 			isa = PBXGroup;
 			children = (
 				E5E7E7862F9A461A0060BF97 /* Weather App */,
+				E5E7E82E2F9A5EC30060BF97 /* Wetterblatt Widget */,
+				E5E7E8292F9A5EC30060BF97 /* Frameworks */,
 				E5E7E7852F9A461A0060BF97 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -54,8 +113,18 @@
 			isa = PBXGroup;
 			children = (
 				E5E7E7842F9A461A0060BF97 /* Weather App.app */,
+				E5E7E8282F9A5EC30060BF97 /* Wetterblatt WidgetExtension.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		E5E7E8292F9A5EC30060BF97 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				E5E7E82A2F9A5EC30060BF97 /* WidgetKit.framework */,
+				E5E7E82C2F9A5EC30060BF97 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -68,10 +137,12 @@
 				E5E7E7802F9A461A0060BF97 /* Sources */,
 				E5E7E7812F9A461A0060BF97 /* Frameworks */,
 				E5E7E7822F9A461A0060BF97 /* Resources */,
+				E5E7E83F2F9A5EC50060BF97 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				E5E7E83D2F9A5EC50060BF97 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				E5E7E7862F9A461A0060BF97 /* Weather App */,
@@ -82,6 +153,28 @@
 			productName = "Weather App";
 			productReference = E5E7E7842F9A461A0060BF97 /* Weather App.app */;
 			productType = "com.apple.product-type.application";
+		};
+		E5E7E8272F9A5EC30060BF97 /* Wetterblatt WidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E5E7E8422F9A5EC50060BF97 /* Build configuration list for PBXNativeTarget "Wetterblatt WidgetExtension" */;
+			buildPhases = (
+				E5E7E8242F9A5EC30060BF97 /* Sources */,
+				E5E7E8252F9A5EC30060BF97 /* Frameworks */,
+				E5E7E8262F9A5EC30060BF97 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				E5E7E82E2F9A5EC30060BF97 /* Wetterblatt Widget */,
+			);
+			name = "Wetterblatt WidgetExtension";
+			packageProductDependencies = (
+			);
+			productName = "Wetterblatt WidgetExtension";
+			productReference = E5E7E8282F9A5EC30060BF97 /* Wetterblatt WidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -94,6 +187,9 @@
 				LastUpgradeCheck = 2640;
 				TargetAttributes = {
 					E5E7E7832F9A461A0060BF97 = {
+						CreatedOnToolsVersion = 26.4.1;
+					};
+					E5E7E8272F9A5EC30060BF97 = {
 						CreatedOnToolsVersion = 26.4.1;
 					};
 				};
@@ -113,12 +209,20 @@
 			projectRoot = "";
 			targets = (
 				E5E7E7832F9A461A0060BF97 /* Weather App */,
+				E5E7E8272F9A5EC30060BF97 /* Wetterblatt WidgetExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		E5E7E7822F9A461A0060BF97 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E5E7E8262F9A5EC30060BF97 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -135,14 +239,30 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E5E7E8242F9A5EC30060BF97 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		E5E7E83D2F9A5EC50060BF97 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E5E7E8272F9A5EC30060BF97 /* Wetterblatt WidgetExtension */;
+			targetProxy = E5E7E83C2F9A5EC50060BF97 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		E5E7E7932F9A461B0060BF97 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = Wetterblatt;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = "Weather App/Weather_App.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -150,17 +270,21 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Weather App/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Wetterblatt;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+				INFOPLIST_KEY_UIStatusBarHidden = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "DyonisosFergadiotis.Weather-App";
+				PRODUCT_BUNDLE_IDENTIFIER = DyonisosFergadiotis.Wetterblatt;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -175,8 +299,9 @@
 		E5E7E7942F9A461B0060BF97 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = Wetterblatt;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = "Weather App/Weather_App.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -184,17 +309,21 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Weather App/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Wetterblatt;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+				INFOPLIST_KEY_UIStatusBarHidden = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "DyonisosFergadiotis.Weather-App";
+				PRODUCT_BUNDLE_IDENTIFIER = DyonisosFergadiotis.Wetterblatt;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -327,6 +456,70 @@
 			};
 			name = Release;
 		};
+		E5E7E8402F9A5EC50060BF97 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = "Wetterblatt Widget/Wetterblatt_Widget.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8W4U9DBYVS;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Wetterblatt Widget/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Wetterblatt Widget";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.1;
+				PRODUCT_BUNDLE_IDENTIFIER = "DyonisosFergadiotis.Wetterblatt.Wetterblatt-Widget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		E5E7E8412F9A5EC50060BF97 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = "Wetterblatt Widget/Wetterblatt_Widget.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 8W4U9DBYVS;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Wetterblatt Widget/Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Wetterblatt Widget";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.1;
+				PRODUCT_BUNDLE_IDENTIFIER = "DyonisosFergadiotis.Wetterblatt.Wetterblatt-Widget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -344,6 +537,15 @@
 			buildConfigurations = (
 				E5E7E7932F9A461B0060BF97 /* Debug */,
 				E5E7E7942F9A461B0060BF97 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E5E7E8422F9A5EC50060BF97 /* Build configuration list for PBXNativeTarget "Wetterblatt WidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E5E7E8402F9A5EC50060BF97 /* Debug */,
+				E5E7E8412F9A5EC50060BF97 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

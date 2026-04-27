@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>App Architecture Workmap — Wetterblatt</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=DM+Mono:wght@400;500&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Mono', monospace;
+      background: #f5f0e8;
+      color: #2a2015;
+      padding: 24px;
+    }
+    .doc {
+      max-width: 820px;
+      margin: 0 auto;
+    }
+    .title {
+      font-family: 'Playfair Display', serif;
+      font-size: 26px;
+      font-style: italic;
+      margin-bottom: 4px;
+    }
+    .sub {
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #9a8f7e;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #c8bfaa;
+      margin-bottom: 22px;
+    }
+    .section { margin-bottom: 28px; }
+    .section-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 9px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #9a8f7e;
+      margin-bottom: 12px;
+    }
+    .section-head::after {
+      content: "";
+      flex: 1;
+      height: 0.5px;
+      background: #c8bfaa;
+    }
+    .panel,
+    .node,
+    .flow-box,
+    .layer,
+    .rule,
+    .tree {
+      background: #ede7db;
+      border: 0.5px solid #c8bfaa;
+      border-radius: 6px;
+    }
+    .panel {
+      padding: 14px;
+    }
+    .grid-2,
+    .grid-3,
+    .node-grid,
+    .rule-grid {
+      display: grid;
+      gap: 8px;
+    }
+    .grid-2 { grid-template-columns: 1.2fr 1fr; }
+    .grid-3,
+    .node-grid,
+    .rule-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+    .node {
+      padding: 12px 14px;
+    }
+    .node-title {
+      font-size: 10px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+    .node-sub {
+      font-size: 8px;
+      color: #9a8f7e;
+      line-height: 1.55;
+      margin-bottom: 8px;
+    }
+    .tag-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 7px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border: 0.5px solid #c8bfaa;
+      background: rgba(42,32,21,0.07);
+      color: #6b6050;
+    }
+    .tag.blue {
+      background: rgba(90,122,158,0.10);
+      color: #3d5f7e;
+      border-color: rgba(90,122,158,0.35);
+    }
+    .tag.amber {
+      background: rgba(200,149,90,0.12);
+      color: #7a5020;
+      border-color: rgba(200,149,90,0.35);
+    }
+    .tag.dark {
+      background: #2a2015;
+      border-color: #2a2015;
+      color: #f5f0e8;
+    }
+    .stack {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .line {
+      width: 0.5px;
+      height: 18px;
+      background: #c8bfaa;
+      margin: 0 auto;
+    }
+    .arrow {
+      width: 0;
+      height: 0;
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+      border-top: 6px solid #c8bfaa;
+      margin: 0 auto;
+    }
+    .flow {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+    }
+    .flow-box {
+      padding: 7px 10px;
+      font-size: 8px;
+      color: #2a2015;
+      white-space: nowrap;
+    }
+    .flow-box.dark {
+      background: #2a2015;
+      color: #f5f0e8;
+      border-color: #2a2015;
+    }
+    .flow-box.blue {
+      background: rgba(90,122,158,0.10);
+      color: #3d5f7e;
+      border-color: rgba(90,122,158,0.35);
+    }
+    .flow-arrow {
+      font-size: 12px;
+      color: #9a8f7e;
+    }
+    .layer {
+      overflow: hidden;
+    }
+    .layer-head {
+      background: #2a2015;
+      color: #f5f0e8;
+      padding: 7px 12px;
+      font-size: 9px;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+    }
+    .layer-body {
+      padding: 10px 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .layer-item {
+      padding: 4px 8px;
+      font-size: 8px;
+      border-radius: 4px;
+      border: 0.5px solid #c8bfaa;
+      background: #f5f0e8;
+    }
+    .rule {
+      padding: 10px 12px;
+    }
+    .rule-title {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #9a8f7e;
+      margin-bottom: 6px;
+    }
+    .rule-copy {
+      font-size: 9px;
+      line-height: 1.65;
+    }
+    .tree {
+      padding: 14px;
+      font-size: 8px;
+      line-height: 1.95;
+      color: #2a2015;
+    }
+    .muted { color: #9a8f7e; }
+    code {
+      font-family: 'DM Mono', monospace;
+      background: rgba(0,0,0,0.06);
+      padding: 1px 4px;
+      border-radius: 2px;
+      font-size: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="doc">
+    <div class="title">App Architecture Workmap</div>
+    <div class="sub">Codex Spec — Wetterblatt · Cache, Clock & Snapshot Merge · v2.0</div>
+
+    <div class="section">
+      <div class="section-head">Runtime Map</div>
+      <div class="stack">
+        <div class="node" style="max-width:320px; margin:0 auto; text-align:center;">
+          <div class="node-title">WetterblattApp</div>
+          <div class="node-sub">@main · ScenePhase · AppContainer · Background Refresh Registration</div>
+          <div class="tag-row" style="justify-content:center;">
+            <span class="tag dark">App Entry</span>
+            <span class="tag amber">ScenePhase</span>
+          </div>
+        </div>
+        <div class="line"></div>
+        <div class="arrow"></div>
+        <div class="node" style="max-width:360px; margin:0 auto; text-align:center;">
+          <div class="node-title">AppShellView</div>
+          <div class="node-sub">Home · Detail · Week · Places · shared Environment mit Repository, Clock und Settings</div>
+          <div class="tag-row" style="justify-content:center;">
+            <span class="tag">Tab Shell</span>
+            <span class="tag blue">Offline-first</span>
+          </div>
+        </div>
+        <div class="node-grid">
+          <div class="node">
+            <div class="node-title">HomeView</div>
+            <div class="node-sub">Current weather, freshness stamp, hourly rail ab jetzt</div>
+            <div class="tag-row">
+              <span class="tag">Hero</span>
+              <span class="tag">Now</span>
+            </div>
+          </div>
+          <div class="node">
+            <div class="node-title">DetailView</div>
+            <div class="node-sub">Charts, scrubbing, Modellvergleich, Verlauf um den aktuellen Slot herum</div>
+            <div class="tag-row">
+              <span class="tag">Charts</span>
+              <span class="tag">Scrub</span>
+            </div>
+          </div>
+          <div class="node">
+            <div class="node-title">WeekView</div>
+            <div class="node-sub">7- bis 10-Tage Forecast mit lokal korrekten Tagesgrenzen</div>
+            <div class="tag-row">
+              <span class="tag">Daily</span>
+              <span class="tag">Timezone</span>
+            </div>
+          </div>
+          <div class="node">
+            <div class="node-title">PlacesView</div>
+            <div class="node-sub">Gespeicherte Orte, Ortssuche, Cache pro Ort, letzte Aktualisierung pro Ort</div>
+            <div class="tag-row">
+              <span class="tag">Places</span>
+              <span class="tag">Persistence</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">Domain Kern</div>
+      <div class="node-grid">
+        <div class="node">
+          <div class="node-title">WeatherRepository</div>
+          <div class="node-sub">Zentrale Orchestrierung: lädt Cache zuerst, triggert Refresh, merged neue Snapshots, veröffentlicht renderbare Zustände.</div>
+          <div class="tag-row">
+            <span class="tag dark">Single Source</span>
+            <span class="tag blue">Cache + Network</span>
+          </div>
+        </div>
+        <div class="node">
+          <div class="node-title">ForecastCacheStore</div>
+          <div class="node-sub">Persistiert Snapshot-JSON pro Ort in Application Support inklusive fetchedAt, source timezone, hourly/daily/current und freshness metadata.</div>
+          <div class="tag-row">
+            <span class="tag">Disk Cache</span>
+            <span class="tag">JSON</span>
+          </div>
+        </div>
+        <div class="node">
+          <div class="node-title">SnapshotMerger</div>
+          <div class="node-sub">Führt neue Daten in bestehende Forecast-Slots ein, ersetzt gleiche Stunden/Tage per Timestamp-Key und bewahrt stabile IDs für die UI.</div>
+          <div class="tag-row">
+            <span class="tag">Inkrementell</span>
+            <span class="tag">Stable IDs</span>
+          </div>
+        </div>
+        <div class="node">
+          <div class="node-title">CurrentWeatherResolver</div>
+          <div class="node-sub">Ermittelt den „Jetzt“-Zustand aus aktueller Beobachtung oder nächstem passenden Hour-Slot, immer relativ zu <code>now</code> in Ortszeit.</div>
+          <div class="tag-row">
+            <span class="tag amber">Time-aware</span>
+            <span class="tag">Fallback</span>
+          </div>
+        </div>
+        <div class="node">
+          <div class="node-title">ForecastTimelineResolver</div>
+          <div class="node-sub">Schneidet stündliche und tägliche Daten für die Präsentation zurecht: aktiver Slot, vergangene Slots, Tageswechsel, Sunrise/Sunset Labels.</div>
+          <div class="tag-row">
+            <span class="tag">Now Window</span>
+            <span class="tag">Daily Boundaries</span>
+          </div>
+        </div>
+        <div class="node">
+          <div class="node-title">WeatherClock</div>
+          <div class="node-sub">Minütlicher Tick für relative Labels, aktuelle Stunde, Sonnenereignisse und automatische Verschiebung des „Jetzt“-Markers ohne Netz-Request.</div>
+          <div class="tag-row">
+            <span class="tag">1-Min Tick</span>
+            <span class="tag blue">Live UI</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">Offline-First Datenfluss</div>
+      <div class="panel">
+        <div class="flow" style="margin-bottom:10px;">
+          <div class="flow-box dark">App Launch / Ort wechseln</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box blue">Cache laden</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">CurrentWeatherResolver</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">UI sofort rendern</div>
+        </div>
+        <div class="flow" style="margin-bottom:10px;">
+          <div class="flow-box dark">RefreshCoordinator</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">WeatherService fetch</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">SnapshotMerger</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box blue">Cache persistieren</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">UI diffen</div>
+        </div>
+        <div class="flow">
+          <div class="flow-box dark">WeatherClock tick</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">Timeline neu berechnen</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">„Jetzt“ Marker verschieben</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-box">Relative Zeiten updaten</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">Zeitlogik Damit Nichts In Der Vergangenheit Hängt</div>
+      <div class="rule-grid">
+        <div class="rule">
+          <div class="rule-title">1. Ortszeit als Wahrheit</div>
+          <div class="rule-copy">Jeder Snapshot speichert explizit Zeitzone und UTC-Offset des Ortes. Renderlogik benutzt diese Daten für Header, Tageswechsel und Sonnevents.</div>
+        </div>
+        <div class="rule">
+          <div class="rule-title">2. Live Clock statt Fetch-Zeit</div>
+          <div class="rule-copy">Die UI darf nie an <code>fetchedAt</code> kleben. <code>now</code> kommt immer vom laufenden Clock-Service, der minütlich neu resolved.</div>
+        </div>
+        <div class="rule">
+          <div class="rule-title">3. Current Fallback</div>
+          <div class="rule-copy">Ist <code>current_weather.time</code> zu alt oder fehlt, wird das aktuelle Panel aus dem passendsten stündlichen Slot um <code>now</code> aufgebaut und als Cache/Fallback markiert.</div>
+        </div>
+        <div class="rule">
+          <div class="rule-title">4. Hourly Rail Shift</div>
+          <div class="rule-copy">Die Hourly-Ansicht filtert per Timestamp. Sobald eine Stunde in die Vergangenheit rutscht, verliert sie den aktiven Status; der Fokus springt weich auf die neue Gegenwart.</div>
+        </div>
+        <div class="rule">
+          <div class="rule-title">5. Merge ohne UI Reset</div>
+          <div class="rule-copy">Neue Daten werden nach Timestamp gemerged. Identitäten der Einträge bleiben stabil, damit Charts, ScrollPosition und Selektion nicht unnötig springen.</div>
+        </div>
+        <div class="rule">
+          <div class="rule-title">6. Hintergrund-Refresh</div>
+          <div class="rule-copy">Beim Öffnen, bei Scene-Aktivierung und periodisch im Hintergrund wird nachgeladen. Offline fällt die App sauber auf den letzten Snapshot zurück.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">Refresh Strategie</div>
+      <div class="grid-2">
+        <div class="panel">
+          <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.08em; color:#9a8f7e; margin-bottom:8px;">Trigger</div>
+          <div class="stack">
+            <div class="node" style="padding:10px 12px;">
+              <div class="node-title">Initial Launch</div>
+              <div class="node-sub">Cache rendern, danach sofort frischen Fetch anstoßen</div>
+            </div>
+            <div class="node" style="padding:10px 12px;">
+              <div class="node-title">ScenePhase .active</div>
+              <div class="node-sub">Nur refetchen, wenn Snapshot älter als definierte Frischegrenze ist</div>
+            </div>
+            <div class="node" style="padding:10px 12px;">
+              <div class="node-title">Pull-to-refresh</div>
+              <div class="node-sub">Erzwingt neue Anfrage, behält aber gecachten Inhalt sichtbar</div>
+            </div>
+            <div class="node" style="padding:10px 12px;">
+              <div class="node-title">BGAppRefreshTask</div>
+              <div class="node-sub">Leichte Hintergrundaktualisierung für Standardort und zuletzt genutzte Orte</div>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div style="font-size:9px; text-transform:uppercase; letter-spacing:0.08em; color:#9a8f7e; margin-bottom:8px;">Frischemodell</div>
+          <div class="stack">
+            <div class="rule">
+              <div class="rule-title">Fresh</div>
+              <div class="rule-copy">Snapshot < 20 Minuten alt, Current aus aktueller Beobachtung oder nahestem Hour-Slot.</div>
+            </div>
+            <div class="rule">
+              <div class="rule-title">Aging</div>
+              <div class="rule-copy">20 bis 90 Minuten: Inhalt bleibt sichtbar, aber mit „Stand …“ und optionalem Reconnect-Hinweis.</div>
+            </div>
+            <div class="rule">
+              <div class="rule-title">Stale</div>
+              <div class="rule-copy">> 90 Minuten: UI bleibt nutzbar, aber Banner erklärt fehlende Frische. Keine falsche Live-Semantik.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">Layer Architektur</div>
+      <div class="stack">
+        <div class="layer">
+          <div class="layer-head">UI Layer — SwiftUI Views</div>
+          <div class="layer-body">
+            <span class="layer-item">AppShellView</span>
+            <span class="layer-item">HomeView</span>
+            <span class="layer-item">DetailView</span>
+            <span class="layer-item">WeekView</span>
+            <span class="layer-item">PlacesView</span>
+            <span class="layer-item">FreshnessStamp</span>
+            <span class="layer-item">OfflineBanner</span>
+            <span class="layer-item">HourlyChartCard</span>
+            <span class="layer-item">WeatherIconView</span>
+          </div>
+        </div>
+        <div class="layer">
+          <div class="layer-head">Presentation Layer — Observation</div>
+          <div class="layer-body">
+            <span class="layer-item">WeatherStore</span>
+            <span class="layer-item">PlacesStore</span>
+            <span class="layer-item">SettingsStore</span>
+            <span class="layer-item">RefreshCoordinator</span>
+          </div>
+        </div>
+        <div class="layer">
+          <div class="layer-head">Domain Layer — Zeit & Prognose</div>
+          <div class="layer-body">
+            <span class="layer-item">WeatherRepository</span>
+            <span class="layer-item">CurrentWeatherResolver</span>
+            <span class="layer-item">ForecastTimelineResolver</span>
+            <span class="layer-item">SnapshotMerger</span>
+            <span class="layer-item">WeatherClock</span>
+            <span class="layer-item">FreshnessPolicy</span>
+          </div>
+        </div>
+        <div class="layer">
+          <div class="layer-head">Service Layer — System & API</div>
+          <div class="layer-body">
+            <span class="layer-item">WeatherService</span>
+            <span class="layer-item">LocationService</span>
+            <span class="layer-item">GeocodingService</span>
+            <span class="layer-item">ReachabilityMonitor</span>
+            <span class="layer-item">BackgroundRefreshService</span>
+          </div>
+        </div>
+        <div class="layer">
+          <div class="layer-head">Persistence Layer — Disk + SwiftData</div>
+          <div class="layer-body">
+            <span class="layer-item">ForecastCacheStore</span>
+            <span class="layer-item">SavedPlaceModel</span>
+            <span class="layer-item">UserPreferenceModel</span>
+            <span class="layer-item">SnapshotIndex</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">Empfohlene Dateien & Ordner</div>
+      <div class="tree">
+        <div><span class="muted">Weather App/</span></div>
+        <div style="padding-left:16px;"><span class="muted">App/</span></div>
+        <div style="padding-left:32px;">WetterblattApp.swift <span class="muted">· @main entry</span></div>
+        <div style="padding-left:32px;">AppShellView.swift <span class="muted">· Tab shell</span></div>
+        <div style="padding-left:32px;">AppContainer.swift <span class="muted">· dependency wiring</span></div>
+        <div style="padding-left:16px;"><span class="muted">Features/</span></div>
+        <div style="padding-left:32px;">Home/HomeView.swift</div>
+        <div style="padding-left:32px;">Detail/DetailView.swift</div>
+        <div style="padding-left:32px;">Week/WeekView.swift</div>
+        <div style="padding-left:32px;">Places/PlacesView.swift</div>
+        <div style="padding-left:16px;"><span class="muted">Components/</span></div>
+        <div style="padding-left:32px;">FreshnessStamp.swift</div>
+        <div style="padding-left:32px;">OfflineBanner.swift</div>
+        <div style="padding-left:32px;">HourlyChartCard.swift</div>
+        <div style="padding-left:32px;">WeatherIconView.swift</div>
+        <div style="padding-left:16px;"><span class="muted">Domain/</span></div>
+        <div style="padding-left:32px;">WeatherSnapshot.swift</div>
+        <div style="padding-left:32px;">ResolvedCurrentWeather.swift</div>
+        <div style="padding-left:32px;">ForecastTimeline.swift</div>
+        <div style="padding-left:32px;">ForecastFreshness.swift</div>
+        <div style="padding-left:16px;"><span class="muted">Core/Weather/</span></div>
+        <div style="padding-left:32px;">WeatherRepository.swift</div>
+        <div style="padding-left:32px;">WeatherService.swift</div>
+        <div style="padding-left:32px;">ForecastCacheStore.swift</div>
+        <div style="padding-left:32px;">SnapshotMerger.swift</div>
+        <div style="padding-left:32px;">CurrentWeatherResolver.swift</div>
+        <div style="padding-left:32px;">ForecastTimelineResolver.swift</div>
+        <div style="padding-left:32px;">WeatherClock.swift</div>
+        <div style="padding-left:32px;">RefreshCoordinator.swift</div>
+        <div style="padding-left:16px;"><span class="muted">Core/Location/</span></div>
+        <div style="padding-left:32px;">LocationService.swift</div>
+        <div style="padding-left:32px;">GeocodingService.swift</div>
+        <div style="padding-left:16px;"><span class="muted">Persistence/</span></div>
+        <div style="padding-left:32px;">SavedPlaceModel.swift</div>
+        <div style="padding-left:32px;">UserPreferenceModel.swift</div>
+        <div style="padding-left:16px;"><span class="muted">Design/</span></div>
+        <div style="padding-left:32px;">DesignTokens.swift</div>
+        <div style="padding-left:32px;">HapticManager.swift</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

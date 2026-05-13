@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		E580AF882FB493710005C14B /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = E580AF872FB493710005C14B /* README.md */; };
 		E5E7E82B2F9A5EC30060BF97 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E5E7E82A2F9A5EC30060BF97 /* WidgetKit.framework */; };
 		E5E7E82D2F9A5EC30060BF97 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E5E7E82C2F9A5EC30060BF97 /* SwiftUI.framework */; };
 		E5E7E83E2F9A5EC50060BF97 /* Wetterblatt WidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E5E7E8282F9A5EC30060BF97 /* Wetterblatt WidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -37,6 +38,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		E580AF872FB493710005C14B /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		E5E7E7842F9A461A0060BF97 /* Weather App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Weather App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		E5E7E8282F9A5EC30060BF97 /* Wetterblatt WidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Wetterblatt WidgetExtension.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		E5E7E82A2F9A5EC30060BF97 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
@@ -106,6 +108,7 @@
 				E5E7E82E2F9A5EC30060BF97 /* Wetterblatt Widget */,
 				E5E7E8292F9A5EC30060BF97 /* Frameworks */,
 				E5E7E7852F9A461A0060BF97 /* Products */,
+				E580AF872FB493710005C14B /* README.md */,
 			);
 			sourceTree = "<group>";
 		};
@@ -219,6 +222,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E580AF882FB493710005C14B /* README.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

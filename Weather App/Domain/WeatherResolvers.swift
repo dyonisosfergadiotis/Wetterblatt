@@ -20,7 +20,9 @@ struct SnapshotMerger {
         guard let existing else { return incoming }
 
         let mergedHourly = mergeHourly(existing.hourly, incoming.hourly)
+        let mergedMinutely = mergeMinutely(existing.minutely15 ?? [], incoming.minutely15 ?? [])
         let mergedDaily = mergeDaily(existing.daily, incoming.daily)
+        let mergedAirQuality = mergeAirQuality(existing.airQuality, incoming.airQuality)
 
         return WeatherSnapshot(
             placeName: incoming.placeName,
@@ -31,11 +33,24 @@ struct SnapshotMerger {
             fetchedAt: incoming.fetchedAt,
             current: incoming.current ?? existing.current,
             hourly: mergedHourly,
-            daily: mergedDaily
+            daily: mergedDaily,
+            airQuality: mergedAirQuality,
+            minutely15: mergedMinutely
         )
     }
 
     private func mergeHourly(_ existing: [HourlyForecastEntry], _ incoming: [HourlyForecastEntry]) -> [HourlyForecastEntry] {
+        var merged = Dictionary(uniqueKeysWithValues: existing.map { ($0.timestamp, $0) })
+        for item in incoming {
+            merged[item.timestamp] = item
+        }
+
+        return merged.values.sorted { $0.timestamp < $1.timestamp }
+    }
+
+    private func mergeMinutely(_ existing: [MinutelyForecastEntry], _ incoming: [MinutelyForecastEntry]) -> [MinutelyForecastEntry]? {
+        guard !existing.isEmpty || !incoming.isEmpty else { return nil }
+
         var merged = Dictionary(uniqueKeysWithValues: existing.map { ($0.timestamp, $0) })
         for item in incoming {
             merged[item.timestamp] = item
@@ -51,6 +66,21 @@ struct SnapshotMerger {
         }
 
         return merged.values.sorted { $0.date < $1.date }
+    }
+
+    private func mergeAirQuality(_ existing: AirQualitySnapshot?, _ incoming: AirQualitySnapshot?) -> AirQualitySnapshot? {
+        guard let incoming else { return existing }
+        guard let existing else { return incoming }
+
+        var merged = Dictionary(uniqueKeysWithValues: existing.hourly.map { ($0.timestamp, $0) })
+        for item in incoming.hourly {
+            merged[item.timestamp] = item
+        }
+
+        return AirQualitySnapshot(
+            current: incoming.current ?? existing.current,
+            hourly: merged.values.sorted { $0.timestamp < $1.timestamp }
+        )
     }
 }
 
@@ -102,6 +132,64 @@ struct CurrentWeatherResolver {
             weatherCode: fallback.weatherCode,
             isDay: fallback.isDay,
             source: freshness == .stale ? .staleForecast : .hourlyFallback
+        )
+    }
+}
+
+struct AirQualityResolver {
+    func resolveCurrent(snapshot: WeatherSnapshot, now: Date) -> ResolvedAirQualityMoment? {
+        if let current = snapshot.airQuality?.current {
+            let delta = abs(current.time.timeIntervalSince(now))
+            if delta <= 5_400 {
+                return resolvedMoment(from: current)
+            }
+        }
+
+        let fallback = snapshot.airQuality?.hourly
+            .sorted { $0.timestamp < $1.timestamp }
+            .last(where: { $0.timestamp <= now })
+            ?? snapshot.airQuality?.hourly.sorted { $0.timestamp < $1.timestamp }.first
+
+        guard let fallback else { return nil }
+        return resolvedMoment(from: fallback)
+    }
+
+    func resolveHourly(snapshot: WeatherSnapshot, now: Date, maxCount: Int = 12) -> [ResolvedAirQualityMoment] {
+        let sorted = snapshot.airQuality?.hourly.sorted { $0.timestamp < $1.timestamp } ?? []
+        guard !sorted.isEmpty else { return [] }
+
+        let activeIndex = sorted.lastIndex(where: { $0.timestamp <= now }) ?? 0
+        let endIndex = min(activeIndex + maxCount, sorted.count)
+        return Array(sorted[activeIndex..<endIndex]).map(resolvedMoment(from:))
+    }
+
+    private func resolvedMoment(from current: AirQualityCurrentSnapshot) -> ResolvedAirQualityMoment {
+        ResolvedAirQualityMoment(
+            timestamp: current.time,
+            europeanAQI: current.europeanAQI,
+            pm2_5: current.pm2_5,
+            pm10: current.pm10,
+            alderPollen: current.alderPollen,
+            birchPollen: current.birchPollen,
+            grassPollen: current.grassPollen,
+            mugwortPollen: current.mugwortPollen,
+            olivePollen: current.olivePollen,
+            ragweedPollen: current.ragweedPollen
+        )
+    }
+
+    private func resolvedMoment(from hourly: AirQualityHourlyEntry) -> ResolvedAirQualityMoment {
+        ResolvedAirQualityMoment(
+            timestamp: hourly.timestamp,
+            europeanAQI: hourly.europeanAQI,
+            pm2_5: hourly.pm2_5,
+            pm10: hourly.pm10,
+            alderPollen: hourly.alderPollen,
+            birchPollen: hourly.birchPollen,
+            grassPollen: hourly.grassPollen,
+            mugwortPollen: hourly.mugwortPollen,
+            olivePollen: hourly.olivePollen,
+            ragweedPollen: hourly.ragweedPollen
         )
     }
 }

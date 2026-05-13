@@ -1,0 +1,1836 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Wetterblatt · Dortmund</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,700;1,900&amp;family=DM+Mono:wght@300;400;500&amp;display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  :root {
+    --bg: #100d08;
+    --bg-elevated: #1a1510;
+    --bg-surface: #221e17;
+    --ink: #f0e4c8;
+    --ink-muted: #8a7d68;
+    --ink-faint: #3d3528;
+    --ocker: #c8923a;
+    --ocker-dim: #7a5820;
+    --ocker-glow: rgba(200, 146, 58, 0.12);
+    --rain: #4a7ab5;
+    --paper-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.18' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  }
+
+  html, body {
+    height: 100%;
+  }
+
+  body {
+    background: #000;
+    color: var(--ink);
+    font-family: "DM Mono", monospace;
+    -webkit-font-smoothing: antialiased;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+  }
+
+  button, input {
+    font: inherit;
+  }
+
+  .preview-shell {
+    width: 100%;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    padding: 12px;
+  }
+
+  .phone {
+    position: relative;
+    width: min(390px, calc(100vw - 24px));
+    height: min(844px, calc(100vh - 24px));
+    max-width: 390px;
+    max-height: 844px;
+    overflow: hidden;
+    border-radius: 44px;
+    background:
+      radial-gradient(circle at 65% 25%, rgba(200, 146, 58, 0.12), transparent 28%),
+      linear-gradient(180deg, rgba(255, 245, 220, 0.03), transparent 34%),
+      var(--bg);
+    box-shadow: 0 40px 120px rgba(0, 0, 0, 0.9), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  }
+
+  .phone::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.01), transparent 40%),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.012), transparent 50%);
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .print-grain {
+    position: absolute;
+    inset: 0;
+    background-image: var(--paper-grain);
+    background-size: 180px 180px;
+    opacity: 0.045;
+    z-index: 140;
+    pointer-events: none;
+    mix-blend-mode: soft-light;
+  }
+
+  .scroller {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: none;
+    z-index: 1;
+  }
+
+  .scroller::-webkit-scrollbar {
+    display: none;
+  }
+
+  .hero {
+    position: relative;
+    min-height: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(circle at 68% 22%, rgba(200, 146, 58, 0.1), transparent 16%),
+      linear-gradient(180deg, rgba(26, 21, 16, 0.0), rgba(16, 13, 8, 0.7) 75%, var(--bg) 100%);
+    z-index: 0;
+  }
+
+  .sun {
+    position: absolute;
+    top: 18%;
+    right: 16%;
+    width: 120px;
+    height: 120px;
+    z-index: 1;
+    animation: heroFade 1.5s ease 0.3s both;
+    transform-origin: center;
+  }
+
+  .sun-halo {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(200, 146, 58, 0.18) 0%, rgba(200, 146, 58, 0.07) 44%, transparent 72%);
+    filter: blur(10px);
+  }
+
+  .sun-core {
+    position: absolute;
+    top: 25px;
+    left: 25px;
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 38% 35%, #f3d39b 0%, var(--ocker) 44%, #5a3c15 100%);
+    box-shadow: 0 0 30px rgba(200, 146, 58, 0.35);
+  }
+
+  .hero-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 6;
+    padding: 52px 24px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 18px;
+  }
+
+  .eyebrow,
+  .mono-label,
+  .divider-label,
+  .sheet-label,
+  .tiny-meta {
+    text-transform: uppercase;
+    font-size: 9px;
+    font-weight: 400;
+    letter-spacing: 0.35em;
+  }
+
+  .eyebrow {
+    font-size: 8px;
+    letter-spacing: 0.4em;
+    color: var(--ink-muted);
+    margin-bottom: 8px;
+  }
+
+  .hero-city {
+    font-family: "Playfair Display", serif;
+    font-size: 28px;
+    font-weight: 700;
+    font-style: italic;
+    line-height: 1;
+    color: var(--ink);
+  }
+
+  .hero-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    padding-top: 2px;
+  }
+
+  .header-date {
+    font-size: 10px;
+    font-weight: 300;
+    color: var(--ink-muted);
+    letter-spacing: 0.18em;
+  }
+
+  .aqi-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid var(--ocker-dim);
+    background: var(--ocker-glow);
+    color: var(--ocker);
+    padding: 5px 10px;
+    border-radius: 2px;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  .aqi-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--ocker);
+    box-shadow: 0 0 8px rgba(200, 146, 58, 0.35);
+    animation: blinkDot 3s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+
+  .hero-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -54%);
+    width: min(290px, calc(100% - 48px));
+    text-align: center;
+    z-index: 5;
+    animation: heroRise 1s ease 0.1s both;
+  }
+
+  .hero-temp {
+    font-family: "Playfair Display", serif;
+    font-size: clamp(112px, 19vw, 124px);
+    font-weight: 900;
+    letter-spacing: -0.04em;
+    line-height: 0.88;
+    color: var(--ink);
+  }
+
+  .hero-temp .unit {
+    color: var(--ocker);
+    font-size: 44px;
+    vertical-align: super;
+    margin-left: 4px;
+  }
+
+  .hero-rule {
+    width: 60px;
+    height: 1px;
+    background: var(--ocker-dim);
+    margin: 14px auto;
+  }
+
+  .condition-badge {
+    display: inline-block;
+    padding: 5px 14px;
+    border: 1px solid var(--ocker-dim);
+    border-radius: 2px;
+    color: var(--ink);
+    font-size: 9px;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+  }
+
+  .mood-line {
+    margin-top: 12px;
+    color: var(--ink-muted);
+    font-family: "Playfair Display", serif;
+    font-size: 18px;
+    font-style: italic;
+    line-height: 1.4;
+  }
+
+  .range-row {
+    margin-top: 10px;
+    color: var(--ink-muted);
+    font-size: 11px;
+    font-weight: 300;
+    letter-spacing: 0.08em;
+  }
+
+  .range-row strong {
+    color: var(--ink);
+    font-weight: 400;
+  }
+
+  .scroll-indicator {
+    position: absolute;
+    left: 50%;
+    bottom: 28px;
+    transform: translateX(-50%);
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    animation: heroFade 2s ease 1s both;
+  }
+
+  .scroll-label {
+    color: var(--ink-faint);
+    font-size: 8px;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+  }
+
+  .scroll-line {
+    width: 28px;
+    height: 1px;
+    background: var(--ocker);
+    animation: scrollPulse 2s ease-in-out infinite;
+  }
+
+  .weather-page {
+    position: relative;
+    z-index: 2;
+    background: var(--bg);
+  }
+
+  .mini-header {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    padding: 10px 24px;
+    background: var(--bg);
+    border-top: 1px solid var(--ink-faint);
+    border-bottom: 1px solid var(--ink-faint);
+    opacity: 0;
+    transform: translateY(-100%);
+    transition: opacity 0.24s ease, transform 0.24s ease;
+  }
+
+  .mini-header.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .mini-left {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  .mini-temp {
+    font-family: "Playfair Display", serif;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+
+  .mini-place {
+    font-size: 10px;
+    font-weight: 300;
+    letter-spacing: 0.3em;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+  }
+
+  .mini-time {
+    font-size: 12px;
+    font-weight: 300;
+    color: var(--ink-muted);
+    letter-spacing: 0.12em;
+  }
+
+  .section-opener {
+    padding: 18px 16px 14px;
+  }
+
+  .section-opener-line {
+    width: 100%;
+    height: 1px;
+    background: var(--ink-faint);
+  }
+
+  .section-opener-label {
+    margin-top: 8px;
+    color: var(--ink-muted);
+    font-size: 9px;
+    font-weight: 300;
+    text-align: center;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+  }
+
+  .cards-stack {
+    padding: 0 16px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .card {
+    position: relative;
+    background: var(--bg-elevated);
+    border-top: 1px solid var(--ink-faint);
+    border-bottom: 1px solid transparent;
+    overflow: hidden;
+  }
+
+  .card.card-radius {
+    border-radius: 4px;
+  }
+
+  .card.clickable {
+    cursor: pointer;
+    transition: background 0.16s ease;
+  }
+
+  .card.clickable:hover,
+  .card.clickable:active {
+    background:
+      linear-gradient(0deg, rgba(200, 146, 58, 0.04), rgba(200, 146, 58, 0.04)),
+      var(--bg-elevated);
+  }
+
+  .card-body {
+    padding: 20px;
+  }
+
+  .card-body.tight {
+    padding-bottom: 0;
+  }
+
+  .card-label {
+    color: var(--ink-muted);
+    font-size: 9px;
+    font-weight: 400;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .card-value {
+    font-family: "Playfair Display", serif;
+    font-size: 48px;
+    font-weight: 900;
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+    color: var(--ink);
+  }
+
+  .card-value .unit {
+    font-family: "DM Mono", monospace;
+    font-size: 14px;
+    font-weight: 300;
+    letter-spacing: 0.08em;
+    color: var(--ink-muted);
+    margin-left: 6px;
+  }
+
+  .card-copy {
+    margin-top: 10px;
+    color: var(--ink-muted);
+    font-size: 12px;
+    font-weight: 300;
+    line-height: 1.65;
+    letter-spacing: 0.03em;
+  }
+
+  .forecast-row {
+    display: grid;
+    grid-template-columns: 84px 24px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 15px 20px;
+    border-top: 1px solid var(--ink-faint);
+  }
+
+  .forecast-day {
+    min-width: 0;
+  }
+
+  .forecast-name {
+    font-family: "Playfair Display", serif;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+
+  .forecast-date {
+    margin-top: 3px;
+    color: var(--ink-muted);
+    font-size: 10px;
+    font-weight: 300;
+    letter-spacing: 0.08em;
+  }
+
+  .forecast-icon {
+    font-size: 20px;
+    text-align: center;
+    color: var(--ink);
+    opacity: 0.9;
+  }
+
+  .temp-track {
+    position: relative;
+    width: 100%;
+    height: 4px;
+    background: var(--ink-faint);
+    overflow: hidden;
+  }
+
+  .temp-fill {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, var(--rain), var(--ocker));
+  }
+
+  .forecast-temps {
+    color: var(--ink-muted);
+    font-size: 12px;
+    white-space: nowrap;
+    letter-spacing: 0.06em;
+  }
+
+  .forecast-temps strong {
+    color: var(--ink);
+    font-weight: 400;
+  }
+
+  .split-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--ink-faint);
+  }
+
+  .split-pane {
+    background: var(--bg-elevated);
+    min-width: 0;
+  }
+
+  .metric-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .metric-note {
+    color: var(--ink-muted);
+    font-size: 10px;
+    font-weight: 300;
+    line-height: 1.45;
+    letter-spacing: 0.03em;
+    text-align: right;
+  }
+
+  .mini-chart,
+  .wind-rose,
+  .aqi-scale,
+  .moon-row {
+    margin-top: 14px;
+  }
+
+  .mini-chart svg,
+  .wind-rose svg,
+  .aqi-card-scale svg,
+  .sun-arc svg,
+  .sheet-sun-arc svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .wind-rose {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .wind-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--ink-muted), transparent);
+  }
+
+  .wind-caption {
+    margin-top: 8px;
+    color: var(--ink-muted);
+    font-size: 12px;
+    font-weight: 300;
+    letter-spacing: 0.03em;
+  }
+
+  .uv-word {
+    margin-top: 10px;
+    color: var(--ocker);
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+  }
+
+  .sun-arc {
+    margin-top: 14px;
+  }
+
+  .sun-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border-top: 1px solid var(--ink-faint);
+    margin-top: 18px;
+  }
+
+  .sun-stat {
+    padding: 14px 10px 16px 0;
+  }
+
+  .sun-stat:not(:last-child) {
+    border-right: 1px solid var(--ink-faint);
+    padding-right: 14px;
+  }
+
+  .sun-stat .label {
+    color: var(--ink-muted);
+    font-size: 9px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+  }
+
+  .sun-stat .time {
+    display: block;
+    margin-top: 7px;
+    font-family: "Playfair Display", serif;
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .aqi-status {
+    color: var(--ocker);
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    margin-top: 8px;
+  }
+
+  .aqi-card-scale {
+    margin-top: 16px;
+  }
+
+  .moon-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .moon-chip {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid var(--ocker-dim);
+    background: #090705;
+    overflow: hidden;
+    box-shadow: 0 0 18px rgba(200, 146, 58, 0.08);
+    flex-shrink: 0;
+  }
+
+  .moon-chip::before {
+    content: "";
+    position: absolute;
+    top: -2px;
+    right: -3px;
+    width: 86%;
+    height: 108%;
+    background: radial-gradient(circle at 45% 40%, #f0e4c8 0%, #f0e4c8 58%, #c8923a 100%);
+    border-radius: 50%;
+  }
+
+  .moon-phase {
+    font-family: "Playfair Display", serif;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .moon-percent {
+    margin-top: 4px;
+    color: var(--ink-muted);
+    font-size: 12px;
+    font-weight: 300;
+  }
+
+  .overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease;
+    backdrop-filter: blur(0);
+    -webkit-backdrop-filter: blur(0);
+    z-index: 90;
+  }
+
+  .overlay.active {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.6);
+    pointer-events: auto;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+
+  .sheet {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 110;
+    background: var(--bg-surface);
+    border-top: 2px solid var(--ocker-dim);
+    transform: translateY(100%);
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    max-height: 88%;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+
+  .sheet::-webkit-scrollbar {
+    display: none;
+  }
+
+  .sheet.open {
+    transform: translateY(0);
+  }
+
+  .sheet-handle {
+    width: 32px;
+    height: 1px;
+    margin: 16px auto 18px;
+    background: var(--ocker-dim);
+  }
+
+  .sheet-body {
+    padding: 0 24px 34px;
+  }
+
+  .sheet-label {
+    color: var(--ocker);
+    margin-bottom: 10px;
+  }
+
+  .sheet-title {
+    font-family: "Playfair Display", serif;
+    font-size: 38px;
+    font-weight: 900;
+    font-style: italic;
+    line-height: 0.98;
+    color: var(--ink);
+  }
+
+  .sheet-subtitle {
+    margin-top: 10px;
+    color: var(--ink-muted);
+    font-size: 12px;
+    font-weight: 300;
+    line-height: 1.6;
+    letter-spacing: 0.03em;
+  }
+
+  .section-divider {
+    height: 1px;
+    background: var(--ink-faint);
+    margin: 20px 0;
+  }
+
+  .divider-label {
+    color: var(--ink-muted);
+  }
+
+  .precip-empty {
+    padding: 22px 0 8px;
+    text-align: center;
+  }
+
+  .precip-zero {
+    font-family: "Playfair Display", serif;
+    font-size: 96px;
+    font-weight: 900;
+    line-height: 0.9;
+    color: var(--ink);
+    opacity: 0.07;
+  }
+
+  .precip-summary {
+    margin-top: 10px;
+    color: var(--ink-muted);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+  }
+
+  .precip-hours {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .precip-hour {
+    display: grid;
+    grid-template-columns: 40px 1fr 34px;
+    align-items: center;
+    gap: 12px;
+    color: var(--ink-muted);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+  }
+
+  .precip-track {
+    position: relative;
+    height: 4px;
+    background: rgba(74, 122, 181, 0.08);
+    overflow: hidden;
+  }
+
+  .precip-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    background: var(--rain);
+    opacity: 0.1;
+  }
+
+  .sheet-tabs {
+    display: flex;
+    gap: 18px;
+    margin-bottom: 18px;
+    border-bottom: 1px solid var(--ink-faint);
+  }
+
+  .sheet-tab {
+    appearance: none;
+    background: transparent;
+    border: 0;
+    color: var(--ink-muted);
+    padding: 0 0 10px;
+    cursor: pointer;
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+  }
+
+  .sheet-tab.active {
+    color: var(--ocker);
+    border-bottom: 1px solid var(--ocker);
+  }
+
+  .future-view[hidden] {
+    display: none;
+  }
+
+  .future-row {
+    display: grid;
+    grid-template-columns: 88px 24px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 18px 0;
+    border-top: 1px solid var(--ink-faint);
+  }
+
+  .future-row:first-child {
+    border-top: 0;
+  }
+
+  .future-name {
+    font-family: "Playfair Display", serif;
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .future-date {
+    margin-top: 4px;
+    color: var(--ink-muted);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+  }
+
+  .future-values {
+    color: var(--ink-muted);
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .future-values strong {
+    color: var(--ink);
+    font-weight: 400;
+  }
+
+  .aqi-sheet-hero {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 18px;
+    align-items: center;
+  }
+
+  .aqi-sheet-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .aqi-headline {
+    font-family: "Playfair Display", serif;
+    font-size: 34px;
+    font-weight: 900;
+    line-height: 0.95;
+  }
+
+  .aqi-eyebrow {
+    color: var(--ocker);
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+  }
+
+  .aqi-scale-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+    margin-top: 18px;
+  }
+
+  .aqi-scale-segment {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .aqi-scale-bar {
+    width: 100%;
+    height: 4px;
+    background: currentColor;
+    opacity: 0.35;
+  }
+
+  .aqi-scale-segment.active .aqi-scale-bar {
+    height: 8px;
+    opacity: 1;
+  }
+
+  .aqi-scale-text {
+    color: var(--ink-muted);
+    font-size: 8px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    text-align: center;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--ink-faint);
+  }
+
+  .stat-box {
+    background: var(--bg-surface);
+    padding: 14px;
+  }
+
+  .stat-box .stat-label {
+    color: var(--ink-muted);
+    font-size: 9px;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .stat-box .stat-value {
+    font-family: "Playfair Display", serif;
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1.05;
+  }
+
+  .stat-box .stat-unit {
+    color: var(--ink-muted);
+    font-size: 11px;
+    line-height: 1.5;
+    margin-top: 6px;
+  }
+
+  .moon-sheet-hero {
+    display: grid;
+    place-items: center;
+    padding: 10px 0 4px;
+  }
+
+  .moon-large {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    border: 1px solid var(--ocker-dim);
+    background: #090705;
+    overflow: hidden;
+    box-shadow: 0 0 22px rgba(200, 146, 58, 0.12);
+  }
+
+  .moon-large::before {
+    content: "";
+    position: absolute;
+    top: -5px;
+    right: -6px;
+    width: 88%;
+    height: 110%;
+    border-radius: 50%;
+    background: radial-gradient(circle at 42% 38%, #f0e4c8 0%, #f0e4c8 55%, #c8923a 100%);
+  }
+
+  .moon-sheet-meta {
+    margin-top: 18px;
+    text-align: center;
+  }
+
+  .moon-sheet-meta .tag {
+    color: var(--ocker);
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+  }
+
+  .moon-sheet-meta .big {
+    margin-top: 10px;
+    font-family: "Playfair Display", serif;
+    font-size: 28px;
+    font-weight: 700;
+  }
+
+  .phase-strip {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 10px;
+    margin-top: 18px;
+  }
+
+  .phase-day {
+    text-align: center;
+  }
+
+  .phase-day .day {
+    color: var(--ink-muted);
+    font-size: 8px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .phase-dot {
+    position: relative;
+    width: 22px;
+    height: 22px;
+    margin: 8px auto 0;
+    border-radius: 50%;
+    border: 1px solid var(--ocker-dim);
+    background: #090705;
+    overflow: hidden;
+  }
+
+  .phase-dot::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: linear-gradient(90deg, transparent 0 var(--lit, 50%), var(--ink) var(--lit, 50%) 100%);
+    opacity: 0.9;
+  }
+
+  .sheet-sun-arc {
+    margin-top: 16px;
+    padding: 10px 0 4px;
+    background: radial-gradient(circle at 50% 68%, rgba(200, 146, 58, 0.08), transparent 42%);
+  }
+
+  .sheet-sun-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--ink-faint);
+    margin-top: 18px;
+  }
+
+  .sheet-sun-stats .stat-box {
+    background: var(--bg-surface);
+  }
+
+  .day-length-block {
+    margin-top: 20px;
+  }
+
+  .day-length-label {
+    color: var(--ink-muted);
+    font-size: 9px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+  }
+
+  .day-length-value {
+    margin-top: 10px;
+    font-family: "Playfair Display", serif;
+    font-size: 40px;
+    font-weight: 900;
+    line-height: 0.95;
+  }
+
+  .day-length-note {
+    margin-top: 12px;
+    color: var(--ink-muted);
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+  .sunline {
+    margin-top: 18px;
+  }
+
+  .sunline svg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  @keyframes heroRise {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -50%);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, -54%);
+    }
+  }
+
+  @keyframes heroFade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes blinkDot {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.25;
+    }
+  }
+
+  @keyframes scrollPulse {
+    0%, 100% {
+      opacity: 0.3;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
+  @media (max-width: 420px) {
+    .preview-shell {
+      padding: 0;
+    }
+
+    .phone {
+      width: 100vw;
+      height: 100vh;
+      border-radius: 0;
+      max-width: none;
+      max-height: none;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="preview-shell">
+    <div class="phone" id="phone">
+      <div class="scroller" id="scroller">
+        <section class="hero" id="hero">
+          <div class="sun" id="sun">
+            <div class="sun-halo"></div>
+            <div class="sun-core"></div>
+          </div>
+
+          <header class="hero-header">
+            <div>
+              <div class="eyebrow">WETTERBLATT</div>
+              <div class="hero-city">Dortmund</div>
+            </div>
+            <div class="hero-right">
+              <div class="header-date" id="header-date">Di, 28. Apr.</div>
+              <div class="aqi-pill">
+                <span class="aqi-dot"></span>
+                <span>MAESSIG</span>
+              </div>
+            </div>
+          </header>
+
+          <div class="hero-center">
+            <div class="hero-temp">14<span class="unit">&deg;</span></div>
+            <div class="hero-rule"></div>
+            <div class="condition-badge">KLAR</div>
+            <div class="mood-line">Trocken und ruhig.</div>
+            <div class="range-row">
+              &darr; <strong>8&deg;</strong> &mdash;&mdash;&mdash; &uarr; <strong>19&deg;</strong>
+            </div>
+          </div>
+
+          <div class="scroll-indicator">
+            <div class="scroll-label">DETAILS</div>
+            <div class="scroll-line"></div>
+          </div>
+        </section>
+
+        <main class="weather-page">
+          <div class="mini-header" id="mini-header">
+            <div class="mini-left">
+              <div class="mini-temp">14&deg;</div>
+              <div class="mini-place">DORTMUND</div>
+            </div>
+            <div class="mini-time" id="mini-time">11:04</div>
+          </div>
+
+          <div class="section-opener">
+            <div class="section-opener-line"></div>
+            <div class="section-opener-label">HEUTE &mdash; UEBERSICHT</div>
+          </div>
+
+          <div class="cards-stack">
+            <section class="card clickable" data-sheet="zukunft">
+              <div class="card-body tight">
+                <div class="card-label">NAECHSTE TAGE</div>
+              </div>
+
+              <div class="forecast-row">
+                <div class="forecast-day">
+                  <div class="forecast-name">Heute</div>
+                  <div class="forecast-date">28. APR.</div>
+                </div>
+                <div class="forecast-icon">&#9728;</div>
+                <div class="temp-track"><div class="temp-fill" style="left:26.6%; width:36.6%;"></div></div>
+                <div class="forecast-temps"><strong>8&deg;</strong> &mdash;&mdash; <strong>19&deg;</strong></div>
+              </div>
+
+              <div class="forecast-row">
+                <div class="forecast-day">
+                  <div class="forecast-name">Morgen</div>
+                  <div class="forecast-date">29. APR.</div>
+                </div>
+                <div class="forecast-icon">&#9788;</div>
+                <div class="temp-track"><div class="temp-fill" style="left:20%; width:43.3%;"></div></div>
+                <div class="forecast-temps"><strong>6&deg;</strong> &mdash;&mdash; <strong>19&deg;</strong></div>
+              </div>
+
+              <div class="forecast-row">
+                <div class="forecast-day">
+                  <div class="forecast-name">Do.</div>
+                  <div class="forecast-date">30. APR.</div>
+                </div>
+                <div class="forecast-icon">&#9729;</div>
+                <div class="temp-track"><div class="temp-fill" style="left:23.3%; width:46.6%;"></div></div>
+                <div class="forecast-temps"><strong>7&deg;</strong> &mdash;&mdash; <strong>21&deg;</strong></div>
+              </div>
+
+              <div class="forecast-row">
+                <div class="forecast-day">
+                  <div class="forecast-name">Fr.</div>
+                  <div class="forecast-date">1. MAI</div>
+                </div>
+                <div class="forecast-icon">&#9788;</div>
+                <div class="temp-track"><div class="temp-fill" style="left:30%; width:46.6%;"></div></div>
+                <div class="forecast-temps"><strong>9&deg;</strong> &mdash;&mdash; <strong>23&deg;</strong></div>
+              </div>
+
+              <div class="forecast-row">
+                <div class="forecast-day">
+                  <div class="forecast-name">Sa.</div>
+                  <div class="forecast-date">2. MAI</div>
+                </div>
+                <div class="forecast-icon">&#9789;</div>
+                <div class="temp-track"><div class="temp-fill" style="left:46.6%; width:33.3%; background: linear-gradient(90deg, var(--rain), rgba(74, 122, 181, 0.5));"></div></div>
+                <div class="forecast-temps"><strong>14&deg;</strong> &mdash;&mdash; <strong>24&deg;</strong></div>
+              </div>
+            </section>
+
+            <section class="split-grid">
+              <article class="split-pane card clickable" data-sheet="niederschlag">
+                <div class="card-body">
+                  <div class="card-label">NIEDERSCHLAG</div>
+                  <div class="metric-top">
+                    <div class="card-value">0<span class="unit">mm</span></div>
+                    <div class="metric-note">0 %<br>Chance</div>
+                  </div>
+                  <div class="mini-chart">
+                    <svg viewBox="0 0 160 48" preserveAspectRatio="none" aria-hidden="true">
+                      <line x1="0" y1="38" x2="160" y2="38" stroke="rgba(74,122,181,0.16)" stroke-width="1"></line>
+                      <polyline points="0,38 26,38 52,38 78,38 104,38 130,38 160,38" fill="none" stroke="var(--rain)" stroke-width="2" opacity="0.28"></polyline>
+                      <circle cx="80" cy="38" r="3" fill="var(--rain)" opacity="0.32"></circle>
+                    </svg>
+                  </div>
+                  <div class="card-copy">Kein Regen erwartet.</div>
+                </div>
+              </article>
+
+              <article class="split-pane card">
+                <div class="card-body">
+                  <div class="card-label">WIND</div>
+                  <div class="metric-top">
+                    <div class="card-value">18<span class="unit">km/h</span></div>
+                    <div class="metric-note">NW<br>Leicht</div>
+                  </div>
+                  <div class="wind-rose">
+                    <svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true">
+                      <circle cx="22" cy="22" r="16" fill="none" stroke="var(--ink-faint)" stroke-width="1"></circle>
+                      <line x1="22" y1="6" x2="22" y2="38" stroke="var(--ink-faint)" stroke-width="1"></line>
+                      <line x1="6" y1="22" x2="38" y2="22" stroke="var(--ink-faint)" stroke-width="1"></line>
+                      <path d="M22 10 L26 22 L22 20 L18 22 Z" fill="var(--ocker)" transform="rotate(-40 22 22)"></path>
+                    </svg>
+                    <div class="wind-line"></div>
+                  </div>
+                  <div class="wind-caption">Leichte Brise aus Nordwest.</div>
+                </div>
+              </article>
+            </section>
+
+            <section class="split-grid">
+              <article class="split-pane card">
+                <div class="card-body">
+                  <div class="card-label">UV</div>
+                  <div class="card-value">3<span class="unit">INDEX</span></div>
+                  <div class="uv-word">MITTEL</div>
+                  <div class="card-copy">Kurze direkte Sonne ist unkritisch.</div>
+                </div>
+              </article>
+
+              <article class="split-pane card">
+                <div class="card-body">
+                  <div class="card-label">GEFUEHLT</div>
+                  <div class="card-value">11<span class="unit">&deg;</span></div>
+                  <div class="card-copy">Wind drueckt die Temperatur leicht nach unten.</div>
+                </div>
+              </article>
+            </section>
+
+            <section class="card card-radius clickable" data-sheet="sonne">
+              <div class="card-body">
+                <div class="card-label">SONNE · HEUTE</div>
+                <div class="sun-arc">
+                  <svg viewBox="0 0 350 122" preserveAspectRatio="none" aria-hidden="true">
+                    <line x1="0" y1="100" x2="350" y2="100" stroke="var(--ink-faint)" stroke-width="1"></line>
+                    <path d="M 24,100 Q 175,-14 326,100" fill="none" stroke="var(--ink-faint)" stroke-width="1.5" stroke-dasharray="4 4"></path>
+                    <path d="M 24,100 Q 175,-14 326,100" fill="none" stroke="var(--ocker)" stroke-width="2.5" stroke-dasharray="420" stroke-dashoffset="210"></path>
+                    <circle cx="160" cy="24" r="6" fill="var(--ocker)"></circle>
+                    <circle cx="160" cy="24" r="12" fill="rgba(200,146,58,0.14)"></circle>
+                    <circle cx="24" cy="100" r="3" fill="var(--ink-muted)"></circle>
+                    <circle cx="326" cy="100" r="3" fill="var(--ink-muted)"></circle>
+                  </svg>
+                </div>
+                <div class="sun-stats">
+                  <div class="sun-stat">
+                    <span class="label">AUFGANG</span>
+                    <span class="time">06:07</span>
+                  </div>
+                  <div class="sun-stat">
+                    <span class="label">TAGESLAENGE</span>
+                    <span class="time">14:40</span>
+                  </div>
+                  <div class="sun-stat" style="padding-left:14px;">
+                    <span class="label">UNTERGANG</span>
+                    <span class="time">20:47</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="split-grid">
+              <article class="split-pane card clickable" data-sheet="luft">
+                <div class="card-body">
+                  <div class="card-label">LUFTQUALITAET</div>
+                  <div class="card-value" style="font-size:40px;">31</div>
+                  <div class="aqi-status">MAESSIG</div>
+                  <div class="aqi-card-scale">
+                    <svg viewBox="0 0 180 16" preserveAspectRatio="none" aria-hidden="true">
+                      <rect x="0" y="6" width="32" height="4" fill="#4b7a45" opacity="0.35"></rect>
+                      <rect x="37" y="4" width="32" height="8" fill="var(--ocker)"></rect>
+                      <rect x="74" y="6" width="32" height="4" fill="#d39b4b" opacity="0.35"></rect>
+                      <rect x="111" y="6" width="32" height="4" fill="#8d4c22" opacity="0.3"></rect>
+                      <rect x="148" y="6" width="32" height="4" fill="#653018" opacity="0.25"></rect>
+                    </svg>
+                  </div>
+                </div>
+              </article>
+
+              <article class="split-pane card card-radius clickable" data-sheet="mond">
+                <div class="card-body">
+                  <div class="card-label">MONDPHASE</div>
+                  <div class="moon-row">
+                    <div class="moon-chip"></div>
+                    <div>
+                      <div class="moon-phase">Zunehmend</div>
+                      <div class="moon-percent">86 % beleuchtet</div>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            </section>
+          </div>
+        </main>
+      </div>
+
+      <div class="overlay" id="overlay"></div>
+
+      <section class="sheet" id="sheet-niederschlag" aria-hidden="true">
+        <div class="sheet-handle"></div>
+        <div class="sheet-body">
+          <div class="sheet-label">NIEDERSCHLAG</div>
+          <h2 class="sheet-title">Kein Regen.</h2>
+          <p class="sheet-subtitle">Die Karte bleibt trocken. Keine Front, kein Spruehen, keine Unruhe im Stundenbild.</p>
+          <div class="precip-empty">
+            <div class="precip-zero">0</div>
+            <div class="precip-summary">0 mm · 0 % Wahrscheinlichkeit</div>
+          </div>
+          <div class="section-divider"></div>
+          <div class="divider-label">STUNDENVERLAUF</div>
+          <div class="precip-hours" style="margin-top:16px;">
+            <div class="precip-hour"><span>06 UHR</span><div class="precip-track"><div class="precip-fill" style="width:0%;"></div></div><span>0 %</span></div>
+            <div class="precip-hour"><span>08 UHR</span><div class="precip-track"><div class="precip-fill" style="width:0%;"></div></div><span>0 %</span></div>
+            <div class="precip-hour"><span>10 UHR</span><div class="precip-track"><div class="precip-fill" style="width:0%;"></div></div><span>0 %</span></div>
+            <div class="precip-hour"><span>12 UHR</span><div class="precip-track"><div class="precip-fill" style="width:0%;"></div></div><span>0 %</span></div>
+            <div class="precip-hour"><span>14 UHR</span><div class="precip-track"><div class="precip-fill" style="width:0%;"></div></div><span>0 %</span></div>
+            <div class="precip-hour"><span>16 UHR</span><div class="precip-track"><div class="precip-fill" style="width:0%;"></div></div><span>0 %</span></div>
+            <div class="precip-hour"><span>18 UHR</span><div class="precip-track"><div class="precip-fill" style="width:0%;"></div></div><span>0 %</span></div>
+            <div class="precip-hour"><span>20 UHR</span><div class="precip-track"><div class="precip-fill" style="width:0%;"></div></div><span>0 %</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="sheet" id="sheet-zukunft" aria-hidden="true">
+        <div class="sheet-handle"></div>
+        <div class="sheet-body">
+          <div class="sheet-label">ZUKUNFT</div>
+          <h2 class="sheet-title">Vor dem Abend.</h2>
+          <p class="sheet-subtitle">Zwischen Stundenbild und den kommenden Tagen. Kein Umschlag, nur ein harter redaktioneller Schnitt.</p>
+          <div class="sheet-tabs">
+            <button class="sheet-tab" type="button" data-view-target="hourly">STUENDLICH</button>
+            <button class="sheet-tab active" type="button" data-view-target="daily">TAEGLICH</button>
+          </div>
+
+          <div class="future-view" id="future-daily">
+            <div class="future-row">
+              <div><div class="future-name">Heute</div><div class="future-date">28. APR.</div></div>
+              <div class="forecast-icon">&#9728;</div>
+              <div class="temp-track"><div class="temp-fill" style="left:26.6%; width:36.6%;"></div></div>
+              <div class="future-values"><strong>8&deg;</strong> &mdash;&mdash; <strong>19&deg;</strong></div>
+            </div>
+            <div class="future-row">
+              <div><div class="future-name">Morgen</div><div class="future-date">29. APR.</div></div>
+              <div class="forecast-icon">&#9788;</div>
+              <div class="temp-track"><div class="temp-fill" style="left:20%; width:43.3%;"></div></div>
+              <div class="future-values"><strong>6&deg;</strong> &mdash;&mdash; <strong>19&deg;</strong></div>
+            </div>
+            <div class="future-row">
+              <div><div class="future-name">Do.</div><div class="future-date">30. APR.</div></div>
+              <div class="forecast-icon">&#9729;</div>
+              <div class="temp-track"><div class="temp-fill" style="left:23.3%; width:46.6%;"></div></div>
+              <div class="future-values"><strong>7&deg;</strong> &mdash;&mdash; <strong>21&deg;</strong></div>
+            </div>
+            <div class="future-row">
+              <div><div class="future-name">Fr.</div><div class="future-date">1. MAI</div></div>
+              <div class="forecast-icon">&#9788;</div>
+              <div class="temp-track"><div class="temp-fill" style="left:30%; width:46.6%;"></div></div>
+              <div class="future-values"><strong>9&deg;</strong> &mdash;&mdash; <strong>23&deg;</strong></div>
+            </div>
+            <div class="future-row">
+              <div><div class="future-name">Sa.</div><div class="future-date">2. MAI</div></div>
+              <div class="forecast-icon">&#9789;</div>
+              <div class="temp-track"><div class="temp-fill" style="left:46.6%; width:33.3%; background: linear-gradient(90deg, var(--rain), rgba(74, 122, 181, 0.5));"></div></div>
+              <div class="future-values"><strong>14&deg;</strong> &mdash;&mdash; <strong>24&deg;</strong></div>
+            </div>
+          </div>
+
+          <div class="future-view" id="future-hourly" hidden>
+            <div class="future-row">
+              <div><div class="future-name">12:00</div><div class="future-date">KLAR</div></div>
+              <div class="forecast-icon">&#9728;</div>
+              <div class="temp-track"><div class="temp-fill" style="left:46.6%; width:8%;"></div></div>
+              <div class="future-values"><strong>14&deg;</strong></div>
+            </div>
+            <div class="future-row">
+              <div><div class="future-name">14:00</div><div class="future-date">HELL</div></div>
+              <div class="forecast-icon">&#9788;</div>
+              <div class="temp-track"><div class="temp-fill" style="left:50%; width:8%;"></div></div>
+              <div class="future-values"><strong>16&deg;</strong></div>
+            </div>
+            <div class="future-row">
+              <div><div class="future-name">16:00</div><div class="future-date">RUHIG</div></div>
+              <div class="forecast-icon">&#9728;</div>
+              <div class="temp-track"><div class="temp-fill" style="left:56.6%; width:8%;"></div></div>
+              <div class="future-values"><strong>18&deg;</strong></div>
+            </div>
+            <div class="future-row">
+              <div><div class="future-name">18:00</div><div class="future-date">MILD</div></div>
+              <div class="forecast-icon">&#9729;</div>
+              <div class="temp-track"><div class="temp-fill" style="left:60%; width:8%;"></div></div>
+              <div class="future-values"><strong>19&deg;</strong></div>
+            </div>
+            <div class="future-row">
+              <div><div class="future-name">21:00</div><div class="future-date">KUEHL</div></div>
+              <div class="forecast-icon">&#9790;</div>
+              <div class="temp-track"><div class="temp-fill" style="left:43.3%; width:8%; background: linear-gradient(90deg, var(--ocker), var(--ink-muted));"></div></div>
+              <div class="future-values"><strong>13&deg;</strong></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="sheet" id="sheet-luft" aria-hidden="true">
+        <div class="sheet-handle"></div>
+        <div class="sheet-body">
+          <div class="sheet-label">LUFTQUALITAET</div>
+          <h2 class="sheet-title">31 / Maessig.</h2>
+          <p class="sheet-subtitle">Saubere Grundlinie mit leichter Belastung. Fuer die meisten Wege und Taetigkeiten unproblematisch.</p>
+
+          <div class="aqi-sheet-hero">
+            <svg width="120" height="120" viewBox="0 0 120 120" aria-hidden="true">
+              <defs>
+                <linearGradient id="aqiRing" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stop-color="#5e7d44"></stop>
+                  <stop offset="52%" stop-color="#d6a54f"></stop>
+                  <stop offset="100%" stop-color="#a85d28"></stop>
+                </linearGradient>
+              </defs>
+              <circle cx="60" cy="60" r="46" fill="none" stroke="var(--ink-faint)" stroke-width="8"></circle>
+              <circle cx="60" cy="60" r="46" fill="none" stroke="url(#aqiRing)" stroke-width="8" stroke-linecap="round" stroke-dasharray="289" stroke-dashoffset="193" transform="rotate(-90 60 60)"></circle>
+              <text x="60" y="56" text-anchor="middle" fill="var(--ink)" font-family="'Playfair Display', serif" font-size="30" font-weight="900">31</text>
+              <text x="60" y="73" text-anchor="middle" fill="var(--ink-muted)" font-family="'DM Mono', monospace" font-size="9" letter-spacing="2">EU-AQI</text>
+            </svg>
+
+            <div class="aqi-sheet-copy">
+              <div class="aqi-eyebrow">HEUTE</div>
+              <div class="aqi-headline">MAESSIG</div>
+              <div class="sheet-subtitle" style="margin-top:0;">Keine drueckende Luft. Empfindliche Personen sollten bei laengerem Sport nur kurz auf den Peak achten.</div>
+            </div>
+          </div>
+
+          <div class="aqi-scale-grid">
+            <div class="aqi-scale-segment" style="color:#5e7d44;">
+              <div class="aqi-scale-bar"></div>
+              <div class="aqi-scale-text">GUT</div>
+            </div>
+            <div class="aqi-scale-segment active" style="color:var(--ocker);">
+              <div class="aqi-scale-bar"></div>
+              <div class="aqi-scale-text">MAESSIG</div>
+            </div>
+            <div class="aqi-scale-segment" style="color:#d39b4b;">
+              <div class="aqi-scale-bar"></div>
+              <div class="aqi-scale-text">UNGES.</div>
+            </div>
+            <div class="aqi-scale-segment" style="color:#8d4c22;">
+              <div class="aqi-scale-bar"></div>
+              <div class="aqi-scale-text">SCHL.</div>
+            </div>
+            <div class="aqi-scale-segment" style="color:#653018;">
+              <div class="aqi-scale-bar"></div>
+              <div class="aqi-scale-text">SEHR</div>
+            </div>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <div class="stats-grid">
+            <div class="stat-box">
+              <div class="stat-label">PM2.5</div>
+              <div class="stat-value">9</div>
+              <div class="stat-unit">&micro;g/m&sup3; · Feine Partikel</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">PM10</div>
+              <div class="stat-value">13</div>
+              <div class="stat-unit">&micro;g/m&sup3; · Staub</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">NO2</div>
+              <div class="stat-value">16</div>
+              <div class="stat-unit">&micro;g/m&sup3; · Verkehr</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">O3</div>
+              <div class="stat-value">42</div>
+              <div class="stat-unit">&micro;g/m&sup3; · Ozon</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="sheet" id="sheet-mond" aria-hidden="true">
+        <div class="sheet-handle"></div>
+        <div class="sheet-body">
+          <div class="sheet-label">MONDPHASE</div>
+          <h2 class="sheet-title">Zunehmender Mond.</h2>
+          <p class="sheet-subtitle">Fast voll, schon deutlich schwerer im Himmel. Das Licht nimmt weiter zu.</p>
+
+          <div class="moon-sheet-hero">
+            <div class="moon-large"></div>
+            <div class="moon-sheet-meta">
+              <div class="tag">ZUNEHMEND</div>
+              <div class="big">86 % Licht</div>
+            </div>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <div class="stats-grid">
+            <div class="stat-box">
+              <div class="stat-label">BELEUCHTUNG</div>
+              <div class="stat-value">86 %</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">NAECHSTER WECHSEL</div>
+              <div class="stat-value">Vollmond</div>
+              <div class="stat-unit">30. APR.</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">MONDAUFGANG</div>
+              <div class="stat-value">18:41</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">MONDUNTERGANG</div>
+              <div class="stat-value">04:56</div>
+            </div>
+          </div>
+
+          <div class="section-divider"></div>
+          <div class="divider-label">WOCHE</div>
+          <div class="phase-strip">
+            <div class="phase-day"><div class="day">MO</div><div class="phase-dot" style="--lit:38%;"></div></div>
+            <div class="phase-day"><div class="day">DI</div><div class="phase-dot" style="--lit:52%;"></div></div>
+            <div class="phase-day"><div class="day">MI</div><div class="phase-dot" style="--lit:64%;"></div></div>
+            <div class="phase-day"><div class="day">DO</div><div class="phase-dot" style="--lit:74%;"></div></div>
+            <div class="phase-day"><div class="day">FR</div><div class="phase-dot" style="--lit:82%;"></div></div>
+            <div class="phase-day"><div class="day">SA</div><div class="phase-dot" style="--lit:88%;"></div></div>
+            <div class="phase-day"><div class="day">SO</div><div class="phase-dot" style="--lit:96%;"></div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="sheet" id="sheet-sonne" aria-hidden="true">
+        <div class="sheet-handle"></div>
+        <div class="sheet-body">
+          <div class="sheet-label">SONNE</div>
+          <h2 class="sheet-title">Tag im Bogen.</h2>
+          <p class="sheet-subtitle">Seit 06:07 Uhr offen. Noch 9 Std. 43 Min. bis Untergang.</p>
+
+          <div class="sheet-sun-arc">
+            <svg viewBox="0 0 340 170" preserveAspectRatio="none" aria-hidden="true">
+              <line x1="12" y1="138" x2="328" y2="138" stroke="var(--ink-faint)" stroke-width="1"></line>
+              <path d="M 12,138 Q 170,-8 328,138" fill="none" stroke="var(--ink-faint)" stroke-width="2" stroke-dasharray="5 5"></path>
+              <path d="M 12,138 Q 170,-8 328,138" fill="none" stroke="var(--ocker)" stroke-width="3" stroke-dasharray="500" stroke-dashoffset="254"></path>
+              <circle cx="152" cy="46" r="8" fill="var(--ocker)">
+                <animate attributeName="r" values="8;8.3;8" dur="7s" repeatCount="indefinite"></animate>
+              </circle>
+              <circle cx="152" cy="46" r="16" fill="rgba(200,146,58,0.12)">
+                <animate attributeName="opacity" values="0.12;0.18;0.12" dur="7s" repeatCount="indefinite"></animate>
+              </circle>
+              <circle cx="12" cy="138" r="4" fill="var(--ink-muted)"></circle>
+              <circle cx="328" cy="138" r="4" fill="var(--ink-muted)"></circle>
+            </svg>
+          </div>
+
+          <div class="sheet-sun-stats">
+            <div class="stat-box">
+              <div class="stat-label">AUFGANG</div>
+              <div class="stat-value">06:07</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">TAGESMITTE</div>
+              <div class="stat-value">13:27</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">UNTERGANG</div>
+              <div class="stat-value">20:47</div>
+            </div>
+          </div>
+
+          <div class="section-divider"></div>
+
+          <div class="day-length-block">
+            <div class="day-length-label">TAGESLAENGE</div>
+            <div class="day-length-value">14 Std. 40 Min.</div>
+            <div class="day-length-note">Noch 9 Std. 43 Min. bis Untergang. Das Licht bleibt heute lange offen.</div>
+          </div>
+
+          <div class="sunline">
+            <svg viewBox="0 0 320 72" preserveAspectRatio="none" aria-hidden="true">
+              <line x1="0" y1="64" x2="320" y2="64" stroke="var(--ink-faint)" stroke-width="1"></line>
+              <polyline points="0,58 40,54 80,46 120,32 160,18 200,22 240,34 280,50 320,60" fill="none" stroke="rgba(200,146,58,0.65)" stroke-width="2"></polyline>
+              <polyline points="0,58 40,54 80,46 120,32 160,18 200,22 240,34 280,50 320,60" fill="rgba(200,146,58,0.06)"></polyline>
+            </svg>
+          </div>
+        </div>
+      </section>
+
+      <div class="print-grain" aria-hidden="true"></div>
+    </div>
+  </div>
+
+  <script>
+    const overlay = document.getElementById("overlay");
+    const scroller = document.getElementById("scroller");
+    const hero = document.getElementById("hero");
+    const miniHeader = document.getElementById("mini-header");
+    const headerDate = document.getElementById("header-date");
+    const miniTime = document.getElementById("mini-time");
+    const sheets = Array.from(document.querySelectorAll(".sheet"));
+    const openTargets = Array.from(document.querySelectorAll("[data-sheet]"));
+    const tabs = Array.from(document.querySelectorAll(".sheet-tab"));
+    const dailyView = document.getElementById("future-daily");
+    const hourlyView = document.getElementById("future-hourly");
+    let currentSheet = null;
+
+    function openSheet(name) {
+      const target = document.getElementById("sheet-" + name);
+      if (!target) {
+        return;
+      }
+
+      if (currentSheet && currentSheet !== name) {
+        closeSheet(false);
+      }
+
+      overlay.classList.add("active");
+      target.classList.add("open");
+      target.setAttribute("aria-hidden", "false");
+      currentSheet = name;
+    }
+
+    function closeSheet(animate) {
+      if (!currentSheet) {
+        overlay.classList.remove("active");
+        return;
+      }
+
+      const current = document.getElementById("sheet-" + currentSheet);
+      if (current) {
+        current.classList.remove("open");
+        current.setAttribute("aria-hidden", "true");
+      }
+
+      overlay.classList.remove("active");
+      currentSheet = null;
+
+      if (animate === false) {
+        sheets.forEach((sheet) => sheet.offsetHeight);
+      }
+    }
+
+    function setFutureView(view) {
+      const isHourly = view === "hourly";
+      hourlyView.hidden = !isHourly;
+      dailyView.hidden = isHourly;
+
+      tabs.forEach((tab) => {
+        tab.classList.toggle("active", tab.dataset.viewTarget === view);
+      });
+    }
+
+    function updateClock() {
+      const now = new Date();
+      const weekdays = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+      const months = ["Jan.", "Feb.", "Maerz", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sept.", "Okt.", "Nov.", "Dez."];
+      const day = String(now.getDate()).padStart(2, "0");
+      const hours = String(now.getHours()).padStart(2, "0");
+      const minutes = String(now.getMinutes()).padStart(2, "0");
+      headerDate.textContent = weekdays[now.getDay()] + ", " + day + ". " + months[now.getMonth()];
+      miniTime.textContent = hours + ":" + minutes;
+    }
+
+    function handleScroll() {
+      const y = scroller.scrollTop;
+      const trigger = hero.offsetHeight - 92;
+      miniHeader.classList.toggle("is-visible", y > trigger);
+    }
+
+    openTargets.forEach((target) => {
+      target.addEventListener("click", () => {
+        openSheet(target.dataset.sheet);
+      });
+    });
+
+    overlay.addEventListener("click", () => closeSheet(true));
+    sheets.forEach((sheet) => {
+      sheet.addEventListener("click", (event) => event.stopPropagation());
+    });
+
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        setFutureView(tab.dataset.viewTarget);
+      });
+    });
+
+    scroller.addEventListener("scroll", handleScroll, { passive: true });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeSheet(true);
+      }
+    });
+
+    setFutureView("daily");
+    updateClock();
+    handleScroll();
+    window.setInterval(updateClock, 60000);
+  </script>
+</body>
+</html>

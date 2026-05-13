@@ -9,6 +9,7 @@ enum WidgetDesign {
     static let ink = Color(red: 0.16, green: 0.13, blue: 0.08)
     static let rain = Color(red: 0.28, green: 0.48, blue: 0.73)
     static let drizzle = Color(red: 0.42, green: 0.56, blue: 0.71)
+    static let cloud = Color(red: 0.48, green: 0.44, blue: 0.37)
     static let sun = Color(red: 0.78, green: 0.58, blue: 0.35)
     static let hazySun = Color(red: 0.71, green: 0.60, blue: 0.42)
     static let moon = Color(red: 0.52, green: 0.58, blue: 0.71)
@@ -52,6 +53,41 @@ enum WidgetDesign {
             return darkAccent
         default:
             return ink
+        }
+    }
+
+    static func symbolPrimaryTint(for weatherCode: Int, isDay: Bool) -> Color {
+        switch weatherCode {
+        case 1, 2, 51...57, 61...67, 80...82:
+            return cloud
+        case 95...99:
+            return cloud.opacity(0.95)
+        default:
+            return tint(for: weatherCode, isDay: isDay)
+        }
+    }
+
+    static func symbolSecondaryTint(for weatherCode: Int, isDay: Bool) -> Color {
+        switch weatherCode {
+        case 1, 2:
+            return isDay ? sun : moon
+        case 51...57:
+            return drizzle
+        case 61...67, 80...82:
+            return rain
+        case 95...99:
+            return sun
+        default:
+            return Color.white.opacity(0.74)
+        }
+    }
+
+    static func symbolTertiaryTint(for weatherCode: Int, isDay: Bool) -> Color {
+        switch weatherCode {
+        case 95...99:
+            return rain
+        default:
+            return Color.white.opacity(0.74)
         }
     }
 }
@@ -107,8 +143,13 @@ struct WidgetWeatherSymbol: View {
                 )
 
             Image(systemName: descriptor.symbolName)
+                .symbolRenderingMode(.palette)
                 .font(.system(size: symbolSize, weight: .medium))
-                .foregroundStyle(tint)
+                .foregroundStyle(
+                    WidgetDesign.symbolPrimaryTint(for: weatherCode, isDay: isDay),
+                    WidgetDesign.symbolSecondaryTint(for: weatherCode, isDay: isDay),
+                    WidgetDesign.symbolTertiaryTint(for: weatherCode, isDay: isDay)
+                )
         }
         .frame(width: diameter, height: diameter)
     }

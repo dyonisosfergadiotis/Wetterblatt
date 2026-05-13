@@ -312,8 +312,13 @@ private struct WetterblattWeatherCircularAccessoryView: View {
         if let state {
             VStack(spacing: 2) {
                 Image(systemName: state.descriptor.symbolName)
+                    .symbolRenderingMode(.palette)
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(WidgetDesign.tint(for: state.current.weatherCode, isDay: state.current.isDay))
+                    .foregroundStyle(
+                        WidgetDesign.symbolPrimaryTint(for: state.current.weatherCode, isDay: state.current.isDay),
+                        WidgetDesign.symbolSecondaryTint(for: state.current.weatherCode, isDay: state.current.isDay),
+                        WidgetDesign.symbolTertiaryTint(for: state.current.weatherCode, isDay: state.current.isDay)
+                    )
                     .widgetAccentable()
 
                 Text(state.temperatureText)
@@ -332,35 +337,40 @@ private struct WetterblattWeatherRectangularAccessoryView: View {
 
     var body: some View {
         if let state {
-            HStack(spacing: 10) {
-                WidgetWeatherSymbol(
-                    weatherCode: state.current.weatherCode,
-                    isDay: state.current.isDay,
-                    diameter: 34,
-                    symbolSize: 15
-                )
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("WETTER")
-                        .font(WidgetDesign.mono(size: 8, weight: .medium))
-                        .foregroundStyle(.secondary)
-
-                    Text(state.descriptor.title)
-                        .font(WidgetDesign.serif(size: 14))
-                        .lineLimit(1)
-
-                    Text("Spanne \(state.highLowText)")
-                        .font(WidgetDesign.mono(size: 9))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-
-                Spacer(minLength: 8)
-
+            HStack(alignment: .center, spacing: 9) {
                 Text(state.temperatureText)
-                    .font(WidgetDesign.heroFont(size: 28))
+                    .font(WidgetDesign.heroFont(size: 34))
                     .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
                     .widgetAccentable()
+
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 4) {
+                        Image(systemName: state.descriptor.symbolName)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.primary)
+                            .widgetAccentable()
+
+                        Text(state.descriptor.title)
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.82)
+                    }
+
+                    Text(state.placeName)
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+
+                    Text("Gefühlt \(state.apparentText) · \(state.highLowText)")
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
             }
         } else {
             Text("Wetter")
@@ -409,30 +419,44 @@ private struct WetterblattRainRectangularAccessoryView: View {
 
     var body: some View {
         if let state {
-            HStack(spacing: 10) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("REGEN")
-                        .font(WidgetDesign.mono(size: 8, weight: .medium))
-                        .foregroundStyle(.secondary)
+            let peak = Int((state.peakRainHour?.precipitationProbability ?? 0).rounded())
 
-                    Text(state.rainLeadText)
-                        .font(WidgetDesign.serif(size: 13))
-                        .lineLimit(1)
+            HStack(alignment: .center, spacing: 10) {
+                Text("\(peak)%")
+                    .font(WidgetDesign.heroFont(size: 32))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+                    .widgetAccentable()
+
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: 5) {
+                        Image(systemName: peak >= 25 ? "drop.fill" : "drop")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.primary)
+                            .widgetAccentable()
+
+                        Text(state.rainLeadText)
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
 
                     Text("Menge \(state.precipitationAmountText)")
-                        .font(WidgetDesign.mono(size: 9))
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
-                }
 
-                Spacer(minLength: 0)
-
-                HStack(alignment: .bottom, spacing: 4) {
-                    ForEach(Array(state.hourly.prefix(4))) { hour in
-                        WidgetAccessoryRainBar(hour: hour)
+                    HStack(alignment: .bottom, spacing: 3) {
+                        ForEach(Array(state.hourly.prefix(6))) { hour in
+                            WidgetAccessoryRainBar(hour: hour)
+                        }
                     }
+                    .frame(height: 12, alignment: .bottom)
+                    .accessibilityHidden(true)
+
                 }
-                .frame(width: 54, alignment: .trailing)
             }
         } else {
             Text("Regen")
@@ -566,8 +590,13 @@ private struct WidgetHourColumn: View {
                 .lineLimit(1)
 
             Image(systemName: WidgetWeatherConditions.descriptor(for: hour.weatherCode, isDay: hour.isDay).symbolName)
+                .symbolRenderingMode(.palette)
                 .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(WidgetDesign.tint(for: hour.weatherCode, isDay: hour.isDay))
+                .foregroundStyle(
+                    WidgetDesign.symbolPrimaryTint(for: hour.weatherCode, isDay: hour.isDay),
+                    WidgetDesign.symbolSecondaryTint(for: hour.weatherCode, isDay: hour.isDay),
+                    WidgetDesign.symbolTertiaryTint(for: hour.weatherCode, isDay: hour.isDay)
+                )
 
             Text("\(Int(hour.temperature.rounded()))°")
                 .font(WidgetDesign.serif(size: 14))
@@ -654,8 +683,13 @@ private struct WidgetWeekRow: View {
                 .frame(width: 54, alignment: .leading)
 
             Image(systemName: WidgetWeatherConditions.descriptor(for: day.weatherCode, isDay: true).symbolName)
+                .symbolRenderingMode(.palette)
                 .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(WidgetDesign.tint(for: day.weatherCode, isDay: true))
+                .foregroundStyle(
+                    WidgetDesign.symbolPrimaryTint(for: day.weatherCode, isDay: true),
+                    WidgetDesign.symbolSecondaryTint(for: day.weatherCode, isDay: true),
+                    WidgetDesign.symbolTertiaryTint(for: day.weatherCode, isDay: true)
+                )
                 .frame(width: 18)
 
             WidgetTemperatureRangeTrack(
@@ -861,6 +895,7 @@ struct WidgetPreviewFactory {
             placeName: "Berlin",
             subtitle: "Deutschland",
             timeZone: timeZone,
+            displaySettings: .fallback,
             fetchedAt: now,
             freshness: .fresh,
             current: WidgetResolvedCurrentWeather(
@@ -913,6 +948,7 @@ struct WidgetPreviewFactory {
             placeName: "Hamburg",
             subtitle: "Deutschland",
             timeZone: timeZone,
+            displaySettings: .fallback,
             fetchedAt: now,
             freshness: .fresh,
             current: WidgetResolvedCurrentWeather(

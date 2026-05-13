@@ -18,8 +18,10 @@ struct MetricCard: View {
     var contentHeight: CGFloat = 122
     var timeline: [TimelineSample] = []
     var timelineAccent: Color = DesignTokens.ink
+    var timelineLowAccent: Color?
     var timelineBaseline: Double?
     var timelineCaption: String?
+    var accent: Color?
     var showsDisclosureIndicator = false
     var headerAccessory: AnyView?
 
@@ -43,7 +45,7 @@ struct MetricCard: View {
             HStack(alignment: .top, spacing: 10) {
                 Text(title.uppercased())
                     .font(DesignTokens.mono(size: timelineUltraCompact ? 9 : 10, weight: .medium))
-                    .foregroundStyle(DesignTokens.secondaryText)
+                    .foregroundStyle(accent ?? DesignTokens.secondaryText)
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
 
@@ -54,13 +56,13 @@ struct MetricCard: View {
                 } else if showsDisclosureIndicator {
                     Image(systemName: "arrow.up.right")
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(DesignTokens.secondaryText)
+                        .foregroundStyle(accent?.opacity(0.88) ?? DesignTokens.secondaryText)
                 }
             }
 
             Text(value)
                 .font(DesignTokens.serif(size: valueFontSize))
-                .foregroundStyle(DesignTokens.ink)
+                .foregroundStyle(accent ?? DesignTokens.ink)
                 .lineLimit(valueLineLimit)
                 .minimumScaleFactor(0.75)
 
@@ -86,6 +88,7 @@ struct MetricCard: View {
                 MetricCardTimeline(
                     samples: timeline,
                     accent: timelineAccent,
+                    lowAccent: timelineLowAccent,
                     baseline: timelineBaseline
                 )
                     .frame(height: timelineHeight)
@@ -101,13 +104,28 @@ struct MetricCard: View {
         .frame(maxWidth: .infinity, minHeight: resolvedContentHeight, maxHeight: .infinity, alignment: .topLeading)
         .clipped()
         .vintageCard()
+        .overlay(alignment: .topLeading) {
+            if let accent {
+                Capsule()
+                    .fill(accent.opacity(0.78))
+                    .frame(width: 42, height: 3)
+                    .padding(.top, 10)
+                    .padding(.leading, 16)
+            }
+        }
+        .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
 
 private struct MetricCardTimeline: View {
     let samples: [MetricCard.TimelineSample]
     let accent: Color
+    let lowAccent: Color?
     let baseline: Double?
+
+    private var lowTint: Color {
+        lowAccent ?? accent.opacity(0.26)
+    }
 
     var body: some View {
         GeometryReader { proxy in
@@ -119,10 +137,23 @@ private struct MetricCardTimeline: View {
 
             ZStack(alignment: .topLeading) {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(DesignTokens.chromeWash.opacity(0.55))
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                DesignTokens.chromeFill.opacity(0.34),
+                                DesignTokens.chromeWash.opacity(0.58),
+                                DesignTokens.surface.opacity(0.22),
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
 
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .stroke(DesignTokens.border.opacity(0.58), lineWidth: 0.9)
+                Circle()
+                    .fill(accent.opacity(0.12))
+                    .frame(width: 72, height: 72)
+                    .blur(radius: 14)
+                    .offset(x: metrics.contentRect.maxX - 42, y: metrics.contentRect.minY - 18)
 
                 ForEach(metrics.horizontalGuideYs, id: \.self) { y in
                     Rectangle()
@@ -152,8 +183,8 @@ private struct MetricCardTimeline: View {
                 .fill(
                     LinearGradient(
                         colors: [
-                            accent.opacity(0.30),
-                            accent.opacity(0.08),
+                            accent.opacity(0.34),
+                            lowTint,
                         ],
                         startPoint: .top,
                         endPoint: .bottom
@@ -170,11 +201,11 @@ private struct MetricCardTimeline: View {
                 .stroke(
                     LinearGradient(
                         colors: [
-                            accent.opacity(1.0),
-                            accent.opacity(0.68),
+                            accent.opacity(0.98),
+                            lowTint.opacity(0.88),
                         ],
-                        startPoint: .leading,
-                        endPoint: .trailing
+                        startPoint: .top,
+                        endPoint: .bottom
                     ),
                     style: StrokeStyle(lineWidth: 2.4, lineCap: .round, lineJoin: .round)
                 )

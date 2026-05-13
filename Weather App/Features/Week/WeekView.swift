@@ -1,15 +1,8 @@
 import SwiftUI
 
-private enum FutureOutlookMode: Equatable {
-    case hourly
-    case daily
-}
-
-private let precipitationChartDescription = "Balken zeigen die Menge in mm. % ist die Regenwahrscheinlichkeit an deinem Ort, nicht die betroffene Fläche."
-
 struct WeekView: View {
     @Bindable var model: AppModel
-    @State private var mode: FutureOutlookMode = .daily
+    @Environment(\.weatherPaperPalette) private var palette
     @State private var selectedDay: ResolvedDailyForecast?
     @State private var selectedDayID: Date?
 
@@ -25,21 +18,7 @@ struct WeekView: View {
                     header
 
                     if let state = model.weatherState {
-                        ForecastDayPicker(
-                            title: "Tag wählen",
-                            days: Array(state.daily.prefix(10)),
-                            selectedDayID: selectedDayID
-                        ) { day in
-                            selectedDayID = day.date
-                        }
-
-                        if mode == .hourly {
-                            if let day = selectedDay(from: state) {
-                                hourlyContent(state, day: day)
-                            }
-                        } else {
-                            dailyContent(state)
-                        }
+                        dailyContent(state)
                     } else {
                         Text("Noch keine Zukunftsdaten.")
                             .font(DesignTokens.mono(size: 11))
@@ -55,12 +34,9 @@ struct WeekView: View {
         }
         .sheet(item: $selectedDay) { day in
             DayForecastDetailSheet(model: model, day: day)
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
-        }
-        .onChange(of: mode) { oldValue, newValue in
-            guard oldValue != newValue else { return }
-            HapticManager.selectionChanged()
+                .weatherSheetChrome(palette)
+                .presentationDetents([.fraction(0.75)])
+                .presentationDragIndicator(.hidden)
         }
         .onAppear {
             if selectedDayID == nil {
@@ -78,58 +54,12 @@ struct WeekView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("ZUKUNFT")
-                        .font(DesignTokens.mono(size: 10, weight: .medium))
-                        .foregroundStyle(DesignTokens.secondaryText)
-
-                    Text(model.weatherState?.place.name ?? "Zukunft")
-                        .font(DesignTokens.serif(size: 30, weight: .bold))
-                        .foregroundStyle(DesignTokens.ink)
-                }
-
-                Spacer()
-
-            }
-
-            HStack(spacing: 8) {
-                Text("Stündlich für den gewählten Tag, täglich für die nächsten Tage.")
-                    .font(DesignTokens.mono(size: 11))
-                    .foregroundStyle(DesignTokens.tertiaryText)
-
-                Spacer(minLength: 12)
-
-                modeButton("Stündlich", isSelected: mode == .hourly) {
-                    mode = .hourly
-                }
-                modeButton("Täglich", isSelected: mode == .daily) {
-                    mode = .daily
-                }
-            }
-        }
-    }
-
-    private func hourlyContent(_ state: WeatherScreenState, day: ResolvedDailyForecast) -> some View {
-        VStack(spacing: 12) {
-            HourlyChartCard(
-                entries: temperatureEntries(for: day, in: state, now: model.clock.now),
-                metric: .temperature,
-                titleOverride: "Temperatur · \(day.displayLabel)",
-                accentCurrentEntry: true
-            )
-            .vintageCard()
-
-            HourlyChartCard(
-                entries: precipitationEntries(for: day, in: state, now: model.clock.now),
-                metric: .precipitationAmount,
-                titleOverride: "Niederschlag · \(day.displayLabel)",
-                descriptionText: precipitationChartDescription,
-                accentCurrentEntry: true
-            )
-            .vintageCard()
-        }
+        WeatherSheetHeader(
+            label: "Zukunft",
+            headline: "Nächste Tage.",
+            contextTitle: model.weatherState?.place.name ?? "Ort",
+            summary: ""
+        )
     }
 
     private func dailyContent(_ state: WeatherScreenState) -> some View {
@@ -165,10 +95,16 @@ struct WeekView: View {
 
             WeatherIconView(weatherCode: day.weatherCode, isDay: true, size: .small)
 
-            ForecastTemperatureRangeView(
+            TemperatureRangeTrack(
                 min: day.temperatureMin,
                 max: day.temperatureMax,
-                range: range
+                range: range,
+                trackHeight: 12,
+                labelSpacing: 6,
+                labelWidth: 30,
+                labelFontSize: 10,
+                minimumVisibleFraction: 0.08,
+                valueFormatter: { model.formattedTemperature($0) }
             )
             .frame(maxWidth: .infinity)
             .padding(.top, 4)
@@ -176,7 +112,7 @@ struct WeekView: View {
             VStack(alignment: .trailing, spacing: 3) {
                 Text("\(Int(day.precipitationProbabilityMax.rounded())) %")
                     .font(DesignTokens.serif(size: 18))
-                    .foregroundStyle(DesignTokens.ink)
+                    .foregroundStyle(DesignTokens.rain)
 
                 Text("Niederschlag")
                     .font(DesignTokens.mono(size: 9))
@@ -213,22 +149,6 @@ struct WeekView: View {
         state.daily.first(where: { $0.date == selectedDayID }) ?? state.daily.first
     }
 
-    private func modeButton(_ title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(DesignTokens.mono(size: 10, weight: .medium))
-                .foregroundStyle(isSelected ? DesignTokens.background : DesignTokens.ink)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(isSelected ? DesignTokens.ink : DesignTokens.chromeFill)
-                .clipShape(Capsule())
-                .overlay(
-                    Capsule()
-                        .stroke(isSelected ? DesignTokens.ink : DesignTokens.border, lineWidth: 0.8)
-                )
-        }
-        .buttonStyle(.plain)
-    }
 }
 
 struct PrecipitationSheet: View {
@@ -244,29 +164,64 @@ struct PrecipitationSheet: View {
 
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 18) {
-                    header
-
                     if let state = model.weatherState,
                        let day = selectedDay(from: state) {
+                        let comparisonDays = Array(state.daily.prefix(7))
+                        let dayHours = hourlyEntries(for: day, in: state)
+                        let totalPrecipitation = dayHours.reduce(0) { $0 + max(0, $1.precipitation) }
+                        let expectation = PrecipitationExpectation.day(
+                            from: dayHours,
+                            fallbackAmount: totalPrecipitation,
+                            fallbackProbability: day.precipitationProbabilityMax
+                        )
+                        let precipitationAmountDomain = PrecipitationLineChartCard.amountDomain(
+                            for: comparisonDays.map { precipitationLineEntries(for: $0, in: state, now: model.clock.now) }
+                        )
+
+                        header(
+                            headline: precipitationHeadline(for: expectation),
+                            summary: precipitationSummary(for: day, expectation: expectation),
+                            metricDetail: "\(model.formattedPrecipitation(expectation.expectedAmount)) \(Int(expectation.probability.rounded())) %"
+                        )
+
                         ForecastDayPicker(
-                            title: "Tag wählen",
-                            days: Array(state.daily.prefix(7)),
-                            selectedDayID: selectedDayID
+                            days: comparisonDays,
+                            selectedDayID: selectedDayID,
+                            accent: DesignTokens.rain
                         ) { day in
                             selectedDayID = day.date
                         }
-                        summaryCard(for: day, state: state)
 
-                        HourlyChartCard(
-                            entries: precipitationEntries(for: day, in: state, now: model.clock.now),
-                            metric: .precipitationAmount,
-                            titleOverride: "Regenmenge",
-                            descriptionText: "Menge in mm, darunter Regenwahrscheinlichkeit an deinem Ort.",
-                            accentCurrentEntry: true,
-                            layoutStyle: .compact
+                        PrecipitationExpectationSummaryCard(
+                            expectedValue: model.formattedPrecipitation(expectation.expectedAmount),
+                            amountValue: model.formattedPrecipitation(expectation.sourceAmount),
+                            probabilityValue: "\(Int(expectation.probability.rounded())) %",
+                            detail: precipitationShapeText(for: expectation),
+                            peakText: peakExpectedHourNote(
+                                for: expectation,
+                                referenceDate: model.clock.now,
+                                timeZone: state.snapshot.timeZone
+                            ),
+                            accent: DesignTokens.rain
+                        )
+
+                        PrecipitationLineChartCard(
+                            entries: precipitationLineEntries(for: day, in: state, now: model.clock.now),
+                            titleOverride: "Menge & Chance",
+                            descriptionText: "Erwartung aus Menge und Chance; Linien zeigen Rohmenge und Wahrscheinlichkeit.",
+                            layoutStyle: .compact,
+                            amountDomain: precipitationAmountDomain,
+                            amountUnitLabel: model.precipitationAxisLabel,
+                            amountValueFormatter: model.formattedPrecipitation
                         )
                         .vintageCard()
                     } else {
+                        header(
+                            headline: "Kein Regen.",
+                            summary: "Noch keine Niederschlagsdaten für einen Tagesverlauf verfügbar.",
+                            metricDetail: nil
+                        )
+
                         Text("Noch keine Niederschlagsdaten.")
                             .font(DesignTokens.mono(size: 11))
                             .foregroundStyle(DesignTokens.secondaryText)
@@ -275,7 +230,7 @@ struct PrecipitationSheet: View {
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 20)
+                .padding(.top, 28)
                 .padding(.bottom, 36)
             }
         }
@@ -294,64 +249,182 @@ struct PrecipitationSheet: View {
         }
     }
 
-    private var header: some View {
-        WeatherSheetHeader(
-            eyebrow: "NIEDERSCHLAG",
-            title: model.weatherState?.place.name ?? "Niederschlag",
-            subtitle: "Ein ruhiger Blick auf Tagesmenge, Spitzenzeit und Verlauf."
-        )
-    }
-
-    private func summaryCard(for day: ResolvedDailyForecast, state: WeatherScreenState) -> some View {
-        let hours = hourlyEntries(for: day, in: state)
-        let totalPrecipitation = hours.reduce(0) { $0 + $1.precipitation }
-        let peakHour = hours.max(by: { $0.precipitationProbability < $1.precipitationProbability })
-
-        return VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(day.displayLabel.uppercased())
-                        .font(DesignTokens.mono(size: 10, weight: .medium))
-                        .foregroundStyle(DesignTokens.secondaryText)
-
-                    Text(precipitationSummary(for: day, total: totalPrecipitation))
-                        .font(DesignTokens.serif(size: 17))
-                        .foregroundStyle(DesignTokens.ink)
-                        .fixedSize(horizontal: false, vertical: true)
+    @ViewBuilder
+    private func header(headline: String, summary: String, metricDetail: String?) -> some View {
+        if let metricDetail, !metricDetail.isEmpty {
+            WeatherNarrativeSheetHeader(
+                label: "Niederschlag",
+                headline: headline,
+                summary: summary,
+                accent: DesignTokens.rain,
+                headlineTrailing: {
+                    WeatherSheetHeadlineValue(value: metricDetail, accent: DesignTokens.rain)
                 }
-
-                Spacer(minLength: 8)
-
-                WeatherSheetMetricBadge(
-                    title: "MAX",
-                    value: "\(Int(day.precipitationProbabilityMax.rounded())) %"
-                )
-            }
-
-            if let peakHour {
-                WeatherSheetSupportingNote(
-                    systemImage: "clock",
-                    text: "Höchste Chance um \(hourLabel(for: peakHour.timestamp, relativeTo: model.clock.now, timeZone: state.snapshot.timeZone)): \(Int(peakHour.precipitationProbability.rounded())) %."
-                )
-            }
+            )
+        } else {
+            WeatherNarrativeSheetHeader(
+                label: "Niederschlag",
+                headline: headline,
+                summary: summary,
+                accent: DesignTokens.rain
+            )
         }
-        .vintageCard()
     }
 
     private func selectedDay(from state: WeatherScreenState) -> ResolvedDailyForecast? {
         state.daily.first(where: { $0.date == selectedDayID }) ?? state.daily.first
     }
 
-    private func precipitationSummary(for day: ResolvedDailyForecast, total: Double) -> String {
-        if day.precipitationProbabilityMax < 20 {
-            return "Sieht nach einem ziemlich trockenen Tag aus. Erwartet werden nur etwa \(formattedPrecipitation(total))."
+    private func precipitationSummary(for day: ResolvedDailyForecast, expectation: PrecipitationExpectation) -> String {
+        let expected = model.formattedPrecipitation(expectation.expectedAmount)
+        let amount = model.formattedPrecipitation(expectation.sourceAmount)
+        let probability = Int(expectation.probability.rounded())
+
+        if expectation.category == .trace {
+            return "Menge und Chance ergeben nur etwa \(expected). Die Rohmenge liegt bei \(amount), die höchste Chance bei \(probability) %."
         }
 
-        if day.precipitationProbabilityMax < 55 {
-            return "Ein paar Schauer sind möglich. Insgesamt liegen wir bei ungefähr \(formattedPrecipitation(total))."
+        if expectation.hasHighChanceLowAmountShape {
+            return "Regen ist wahrscheinlich, aber die Menge bleibt klein. Erwartet werden etwa \(expected) aus \(amount) bei \(probability) %."
         }
 
-        return "Regen ist gut im Spiel. Über den Tag summiert sich das auf rund \(formattedPrecipitation(total))."
+        if expectation.hasLowChanceHighAmountShape {
+            return "Die Menge kann auffallen, trifft aber nicht sicher ein. Der Erwartungswert liegt bei etwa \(expected)."
+        }
+
+        return "\(day.displayLabel) kommt kombiniert auf etwa \(expected). Die Rohmenge liegt bei \(amount), die höchste Chance bei \(probability) %."
+    }
+
+    private func precipitationHeadline(for expectation: PrecipitationExpectation) -> String {
+        if expectation.hasHighChanceLowAmountShape {
+            return "Eher Niesel."
+        }
+
+        if expectation.hasLowChanceHighAmountShape {
+            return "Schauer möglich."
+        }
+
+        switch expectation.category {
+        case .trace:
+            return "Kaum Regen."
+        case .light:
+            return "Leichter Regen."
+        case .wet:
+            return "Nass einplanen."
+        case .strong:
+            return "Kräftiger Regen."
+        }
+    }
+
+    private func precipitationShapeText(for expectation: PrecipitationExpectation) -> String {
+        if expectation.hasHighChanceLowAmountShape {
+            return "Hohe Wahrscheinlichkeit mit niedriger Menge liest sich eher wie Niesel oder feiner Regen."
+        }
+
+        if expectation.hasLowChanceHighAmountShape {
+            return "Niedrigere Wahrscheinlichkeit mit höherer Menge passt eher zu einem kurzen, kräftigen Schauer."
+        }
+
+        switch expectation.category {
+        case .trace:
+            return "Unter 0,5 mm Erwartungswert bleibt der Tag meist kaum spürbar nass."
+        case .light:
+            return "Zwischen 0,5 und 2 mm Erwartungswert ist leichter Regen realistisch."
+        case .wet:
+            return "Über 2 mm Erwartungswert wird es draußen wahrscheinlich nass."
+        case .strong:
+            return "Über 5 mm Erwartungswert spricht die Kombination klar für kräftigeren Regen."
+        }
+    }
+
+    private func peakExpectedHourNote(
+        for expectation: PrecipitationExpectation,
+        referenceDate: Date,
+        timeZone: TimeZone
+    ) -> String? {
+        guard let peakHour = expectation.peakHour else {
+            return nil
+        }
+
+        let peakExpected = PrecipitationExpectation.weightedAmount(
+            precipitation: peakHour.precipitation,
+            probability: peakHour.precipitationProbability
+        )
+
+        return "Stärkste erwartete Phase um \(hourLabel(for: peakHour.timestamp, relativeTo: referenceDate, timeZone: timeZone)): \(model.formattedPrecipitation(peakExpected)) bei \(Int(peakHour.precipitationProbability.rounded())) %."
+    }
+}
+
+private struct PrecipitationExpectationSummaryCard: View {
+    let expectedValue: String
+    let amountValue: String
+    let probabilityValue: String
+    let detail: String
+    let peakText: String?
+    let accent: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text("ERWARTETER REGEN")
+                    .font(DesignTokens.mono(size: 10, weight: .medium))
+                    .foregroundStyle(accent)
+
+                Spacer(minLength: 8)
+
+                Text("mm × %")
+                    .font(DesignTokens.mono(size: 9, weight: .medium))
+                    .foregroundStyle(DesignTokens.secondaryText)
+            }
+
+            Text(detail)
+                .font(DesignTokens.mono(size: 11))
+                .foregroundStyle(DesignTokens.tertiaryText)
+                .lineSpacing(1.4)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 0) {
+                metricColumn(title: "Erwartet", value: expectedValue, tint: accent)
+                divider
+                metricColumn(title: "Menge", value: amountValue, tint: DesignTokens.ink)
+                divider
+                metricColumn(title: "Chance", value: probabilityValue, tint: DesignTokens.drizzle)
+            }
+
+            if let peakText {
+                Rectangle()
+                    .fill(DesignTokens.border.opacity(0.74))
+                    .frame(height: 0.8)
+
+                WeatherSheetSupportingNote(
+                    systemImage: "clock",
+                    text: peakText
+                )
+            }
+        }
+        .vintageCard()
+    }
+
+    private var divider: some View {
+        Rectangle()
+            .fill(DesignTokens.border.opacity(0.72))
+            .frame(width: 0.8, height: 38)
+    }
+
+    private func metricColumn(title: String, value: String, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(title.uppercased())
+                .font(DesignTokens.mono(size: 8, weight: .medium))
+                .foregroundStyle(DesignTokens.secondaryText)
+
+            Text(value)
+                .font(DesignTokens.serif(size: 19, weight: .bold))
+                .foregroundStyle(tint)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 10)
     }
 }
 
@@ -370,21 +443,30 @@ struct UVSheet: View {
 
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 18) {
-                    header
-
                     if let state = model.weatherState,
                        let day = selectedDay(from: state) {
+                        let hours = hourlyEntries(for: day, in: state)
+                        let hourlyMax = hours.compactMap(\.uvIndex).max()
+                        let maxUV = day.uvIndexMax ?? hourlyMax
                         let chartEntries = uvEntries(for: day, in: state, now: model.clock.now)
+                        let comparisonDays = Array(state.daily.prefix(7))
+                        let uvDomain = HourlyChartCard.valueDomain(
+                            for: comparisonDays.map { uvEntries(for: $0, in: state, now: model.clock.now) }
+                        )
+
+                        header(
+                            headline: uvHeadline(for: maxUV),
+                            summary: uvSummary(for: maxUV),
+                            metricValue: maxUV.map(formattedUVIndex) ?? "—"
+                        )
 
                         ForecastDayPicker(
-                            title: "Tag wählen",
-                            days: Array(state.daily.prefix(7)),
-                            selectedDayID: selectedDayID
+                            days: comparisonDays,
+                            selectedDayID: selectedDayID,
+                            accent: DesignTokens.uv
                         ) { day in
                             selectedDayID = day.date
                         }
-                        summaryCard(for: day, state: state)
-
                         if chartEntries.isEmpty {
                             Text("Für diesen Tag gibt es noch keinen stündlichen UV-Verlauf.")
                                 .font(DesignTokens.mono(size: 11))
@@ -397,11 +479,18 @@ struct UVSheet: View {
                                 metric: .uvIndex,
                                 titleOverride: "UV-Verlauf",
                                 accentCurrentEntry: true,
-                                layoutStyle: .compact
+                                layoutStyle: .compact,
+                                valueDomain: uvDomain
                             )
                             .vintageCard()
                         }
                     } else {
+                        header(
+                            headline: "UV noch offen.",
+                            summary: "Noch keine UV-Daten für eine verlässliche Tageseinschätzung.",
+                            metricValue: nil
+                        )
+
                         Text("Noch keine UV-Daten.")
                             .font(DesignTokens.mono(size: 11))
                             .foregroundStyle(DesignTokens.secondaryText)
@@ -410,7 +499,7 @@ struct UVSheet: View {
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 18)
+                .padding(.top, 28)
                 .padding(.bottom, 28)
             }
         }
@@ -429,65 +518,57 @@ struct UVSheet: View {
         }
     }
 
-    private var header: some View {
-        WeatherSheetHeader(
-            eyebrow: "UV",
-            title: model.weatherState?.place.name ?? "UV",
-            subtitle: "Wähle einen Tag und prüfe die Belastung im ruhigen Tagesverlauf."
-        ) {
-            if showsCloseButton {
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(DesignTokens.ink)
-                        .padding(12)
-                        .background(DesignTokens.chromeFill)
-                        .clipShape(Circle())
-                        .overlay(Circle().stroke(DesignTokens.border, lineWidth: 0.8))
+    @ViewBuilder
+    private func header(headline: String, summary: String, metricValue: String?) -> some View {
+        if let metricValue, !metricValue.isEmpty {
+            WeatherNarrativeSheetHeader(
+                label: "UV",
+                headline: headline,
+                summary: summary,
+                accent: DesignTokens.uv,
+                headlineTrailing: {
+                    WeatherSheetHeadlineValue(value: metricValue, accent: DesignTokens.uv)
+                },
+                accessory: {
+                    closeButtonAccessory
                 }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-
-    private func summaryCard(for day: ResolvedDailyForecast, state: WeatherScreenState) -> some View {
-        let hours = hourlyEntries(for: day, in: state)
-        let hourlyMax = hours.compactMap(\.uvIndex).max()
-        let maxUV = day.uvIndexMax ?? hourlyMax
-
-        return VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(day.displayLabel.uppercased())
-                        .font(DesignTokens.mono(size: 10, weight: .medium))
-                        .foregroundStyle(DesignTokens.secondaryText)
-
-                    Text(uvSummary(for: maxUV))
-                        .font(DesignTokens.serif(size: 17))
-                        .foregroundStyle(DesignTokens.ink)
-                        .fixedSize(horizontal: false, vertical: true)
+            )
+        } else {
+            WeatherNarrativeSheetHeader(
+                label: "UV",
+                headline: headline,
+                summary: summary,
+                accent: DesignTokens.uv,
+                accessory: {
+                    closeButtonAccessory
                 }
-
-                Spacer(minLength: 8)
-
-                uvMetricBadge(
-                    title: "MAX",
-                    value: maxUV.map(formattedUVIndex) ?? "—"
-                )
-            }
-
-            WeatherSheetSupportingNote(
-                systemImage: "sun.max",
-                text: uvSupportText(for: maxUV)
             )
         }
-        .vintageCard()
     }
 
     private func selectedDay(from state: WeatherScreenState) -> ResolvedDailyForecast? {
         state.daily.first(where: { $0.date == selectedDayID }) ?? state.daily.first
+    }
+
+    @ViewBuilder
+    private var closeButtonAccessory: some View {
+        if showsCloseButton {
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundStyle(DesignTokens.ink)
+                    .padding(12)
+                    .background(DesignTokens.chromeFill)
+                    .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .stroke(DesignTokens.border, lineWidth: 0.8)
+                    )
+            }
+            .buttonStyle(.plain)
+        }
     }
 
     private func uvSummary(for maxUV: Double?) -> String {
@@ -504,6 +585,23 @@ struct UVSheet: View {
             return "Hohe UV-Last. Längere direkte Sonne solltest du besser vermeiden."
         default:
             return "Sehr starke Belastung. Mittags nur kurz raus und konsequent schützen."
+        }
+    }
+
+    private func uvHeadline(for maxUV: Double?) -> String {
+        guard let maxUV else { return "UV noch offen." }
+
+        switch maxUV {
+        case ..<3:
+            return "Milde Sonne."
+        case ..<6:
+            return "Mässige Last."
+        case ..<8:
+            return "Starke Mitte."
+        case ..<11:
+            return "Hohe Last."
+        default:
+            return "Scharfe Sonne."
         }
     }
 
@@ -524,22 +622,14 @@ struct UVSheet: View {
         }
     }
 
-    private func uvMetricBadge(title: String, value: String) -> some View {
-        VStack(alignment: .trailing, spacing: 2) {
-            Text(title)
-                .font(DesignTokens.mono(size: 9, weight: .medium))
-                .foregroundStyle(DesignTokens.secondaryText)
-
-            Text(value)
-                .font(DesignTokens.serif(size: 28))
-                .foregroundStyle(DesignTokens.ink)
-        }
-        .frame(minWidth: 68, alignment: .trailing)
+    private func maxUVDetailText(for maxUV: Double?) -> String {
+        guard let maxUV else { return "Maximaler Index noch offen" }
+        return "Tagesmaximum \(formattedUVIndex(maxUV))"
     }
 
 }
 
-private struct DayForecastDetailSheet: View {
+struct DayForecastDetailSheet: View {
     @Bindable var model: AppModel
     let day: ResolvedDailyForecast
     @State private var selectedDayID: Date?
@@ -555,36 +645,59 @@ private struct DayForecastDetailSheet: View {
                 VStack(alignment: .leading, spacing: 18) {
                     if let state = model.weatherState {
                         if let selectedDay = selectedDay(from: state) {
+                            let comparisonDays = Array(state.daily.prefix(10))
+                            let temperatureDomain = HourlyChartCard.valueDomain(
+                                for: comparisonDays.map { temperatureEntries(for: $0, in: state, now: model.clock.now) }
+                            )
+                            let precipitationAmountDomain = HourlyChartCard.valueDomain(
+                                for: comparisonDays.map { precipitationAmountEntries(for: $0, in: state, now: model.clock.now) }
+                            )
+
                             header(for: selectedDay)
 
                             ForecastDayPicker(
-                                title: "Tag wählen",
-                                days: Array(state.daily.prefix(10)),
+                                days: comparisonDays,
                                 selectedDayID: selectedDayID
                             ) { day in
                                 selectedDayID = day.date
                             }
 
-                            let hours = hourlyEntries(for: selectedDay, in: state)
-
-                            summaryCard(day: selectedDay, state: state, hours: hours)
-
                             HourlyChartCard(
-                                entries: temperatureEntries(for: selectedDay, in: state, now: model.clock.now),
+                                entries: temperatureEntries(
+                                    for: selectedDay,
+                                    in: state,
+                                    now: model.clock.now,
+                                    temperatureFormatter: { model.formattedTemperature($0) }
+                                ),
                                 metric: .temperature,
                                 titleOverride: "Temperatur",
                                 accentCurrentEntry: true,
-                                layoutStyle: .compact
+                                layoutStyle: .compact,
+                                valueDomain: temperatureDomain,
+                                axisLabelOverride: model.temperatureAxisLabel,
+                                axisValueFormatter: { model.formattedTemperature($0) }
                             )
                             .vintageCard()
 
                             HourlyChartCard(
-                                entries: precipitationEntries(for: selectedDay, in: state, now: model.clock.now),
+                                entries: precipitationAmountEntries(
+                                    for: selectedDay,
+                                    in: state,
+                                    now: model.clock.now,
+                                    precipitationFormatter: model.formattedPrecipitation
+                                ),
                                 metric: .precipitationAmount,
                                 titleOverride: "Niederschlag",
-                                descriptionText: "Menge in mm, darunter Regenwahrscheinlichkeit an deinem Ort.",
+                                descriptionText: "\(model.precipitationAxisLabel) je Stunde",
                                 accentCurrentEntry: true,
-                                layoutStyle: .compact
+                                layoutStyle: .compact,
+                                valueDomain: precipitationAmountDomain,
+                                axisLabelOverride: model.precipitationAxisLabel,
+                                axisValueFormatter: { value in
+                                    model.formattedPrecipitation(value)
+                                        .replacingOccurrences(of: " mm", with: "")
+                                        .replacingOccurrences(of: " in", with: "")
+                                }
                             )
                             .vintageCard()
                         }
@@ -618,9 +731,10 @@ private struct DayForecastDetailSheet: View {
 
     private func header(for day: ResolvedDailyForecast) -> some View {
         WeatherSheetHeader(
-            eyebrow: "TAG",
-            title: dayTitle(for: day),
-            subtitle: "Einheitlicher Überblick über Temperatur und Regen."
+            label: "Tag",
+            headline: dayTitle(for: day),
+            contextTitle: model.weatherState?.place.name ?? "Ort",
+            summary: ""
         )
     }
 
@@ -631,120 +745,20 @@ private struct DayForecastDetailSheet: View {
         )
     }
 
-    private func summaryCard(day: ResolvedDailyForecast, state: WeatherScreenState, hours: [HourlyForecastEntry]) -> some View {
-        let totalPrecipitation = hours.reduce(0) { $0 + $1.precipitation }
-        let descriptor = WeatherConditions.descriptor(for: day.weatherCode, isDay: true)
-
-        return VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("ÜBERBLICK")
-                        .font(DesignTokens.mono(size: 10, weight: .medium))
-                        .foregroundStyle(DesignTokens.secondaryText)
-
-                    Text(descriptor.title)
-                        .font(DesignTokens.serif(size: 18))
-                        .foregroundStyle(DesignTokens.ink)
-
-                    Text("\(Int(day.temperatureMax.rounded()))° / \(Int(day.temperatureMin.rounded()))°")
-                        .font(DesignTokens.heroFont(size: 34))
-                        .foregroundStyle(DesignTokens.ink)
-                }
-
-                Spacer(minLength: 8)
-
-                WeatherIconView(weatherCode: day.weatherCode, isDay: true, size: .medium)
-            }
-
-            WeatherSheetSupportingNote(
-                systemImage: "cloud.rain",
-                text: "Maximal \(Int(day.precipitationProbabilityMax.rounded())) % Regenchance und etwa \(formattedPrecipitation(totalPrecipitation)) über den Tag."
-            )
-        }
-        .vintageCard()
-    }
-
     private func selectedDay(from state: WeatherScreenState) -> ResolvedDailyForecast? {
         state.daily.first(where: { $0.date == selectedDayID }) ?? state.daily.first
     }
 
 }
 
-private struct ForecastTemperatureRangeView: View {
-    let min: Double
-    let max: Double
-    let range: ClosedRange<Double>
-
-    var body: some View {
-        VStack(spacing: 6) {
-            GeometryReader { proxy in
-                let total = Swift.max(range.upperBound - range.lowerBound, 1)
-                let start = (min - range.lowerBound) / total
-                let width = (max - min) / total
-
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(DesignTokens.trackFill)
-                        .frame(height: 12)
-
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [DesignTokens.rain.opacity(0.75), DesignTokens.sun.opacity(0.85)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .frame(
-                            width: proxy.size.width * CGFloat(Swift.max(width, 0.08)),
-                            height: 12
-                        )
-                        .offset(x: proxy.size.width * CGFloat(start))
-                }
-            }
-            .frame(height: 12)
-
-            GeometryReader { proxy in
-                let total = Swift.max(range.upperBound - range.lowerBound, 1)
-                let startPosition = proxy.size.width * CGFloat((min - range.lowerBound) / total)
-                let endPosition = proxy.size.width * CGFloat((max - range.lowerBound) / total)
-                let labelWidth: CGFloat = 30
-
-                ZStack(alignment: .topLeading) {
-                    Text("\(Int(min.rounded()))°")
-                        .font(DesignTokens.mono(size: 10))
-                        .foregroundStyle(DesignTokens.secondaryText)
-                        .frame(width: labelWidth)
-                        .offset(x: clampedPosition(startPosition - labelWidth / 2, totalWidth: proxy.size.width, labelWidth: labelWidth))
-
-                    Text("\(Int(max.rounded()))°")
-                        .font(DesignTokens.mono(size: 10, weight: .medium))
-                        .foregroundStyle(DesignTokens.ink)
-                        .frame(width: labelWidth)
-                        .offset(x: clampedPosition(endPosition - labelWidth / 2, totalWidth: proxy.size.width, labelWidth: labelWidth))
-                }
-            }
-            .frame(height: 16)
-        }
-    }
-
-    private func clampedPosition(_ proposed: CGFloat, totalWidth: CGFloat, labelWidth: CGFloat) -> CGFloat {
-        Swift.min(Swift.max(proposed, 0), Swift.max(totalWidth - labelWidth, 0))
-    }
-}
-
 struct ForecastDayPicker: View {
-    let title: String
     let days: [ResolvedDailyForecast]
     let selectedDayID: Date?
+    var accent: Color = DesignTokens.sun
     let onSelect: (ResolvedDailyForecast) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(title.uppercased())
-                .font(DesignTokens.mono(size: 10, weight: .medium))
-                .foregroundStyle(DesignTokens.secondaryText)
-
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(days) { day in
@@ -756,71 +770,264 @@ struct ForecastDayPicker: View {
                         } label: {
                             Text(day.displayLabel)
                                 .font(DesignTokens.mono(size: 10, weight: .medium))
-                                .foregroundStyle(isSelected ? DesignTokens.background : DesignTokens.ink)
+                                .foregroundStyle(isSelected ? DesignTokens.ink : DesignTokens.secondaryText)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 8)
-                                .background(isSelected ? DesignTokens.ink : DesignTokens.chromeFill)
-                                .clipShape(Capsule())
+                                .background(isSelected ? accent.opacity(0.16) : DesignTokens.chromeFill)
+                                .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
                                 .overlay(
-                                    Capsule()
-                                        .stroke(isSelected ? DesignTokens.ink : DesignTokens.border, lineWidth: 0.8)
+                                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                        .stroke(isSelected ? accent.opacity(0.82) : DesignTokens.border, lineWidth: 0.8)
                                 )
                         }
                         .buttonStyle(.plain)
+                        .contentShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
                     }
                 }
+                .padding(.horizontal, 1)
                 .padding(.vertical, 2)
             }
+            .contentShape(Rectangle())
+            .zIndex(1)
         }
     }
 }
 
-struct WeatherSheetHeader<Accessory: View>: View {
-    let eyebrow: String
-    let title: String
-    let subtitle: String
-    @ViewBuilder let accessory: Accessory
+struct WeatherNarrativeSheetHeader: View {
+    let label: String
+    let headline: String
+    let summary: String
+    var accent: Color = DesignTokens.sun
+    let headlineTrailing: AnyView?
+    let accessory: AnyView?
 
-    init(
-        eyebrow: String,
+    init(title: String, summary: String) {
+        self.label = title
+        self.headline = title
+        self.summary = summary
+        self.accent = DesignTokens.sun
+        self.headlineTrailing = nil
+        self.accessory = nil
+    }
+
+    init(label: String, headline: String, summary: String, accent: Color = DesignTokens.sun) {
+        self.label = label
+        self.headline = headline
+        self.summary = summary
+        self.accent = accent
+        self.headlineTrailing = nil
+        self.accessory = nil
+    }
+
+    init<HeadlineTrailing: View>(
+        label: String,
+        headline: String,
+        summary: String,
+        accent: Color = DesignTokens.sun,
+        @ViewBuilder headlineTrailing: () -> HeadlineTrailing
+    ) {
+        self.label = label
+        self.headline = headline
+        self.summary = summary
+        self.accent = accent
+        self.headlineTrailing = AnyView(headlineTrailing())
+        self.accessory = nil
+    }
+
+    init<Accessory: View>(
         title: String,
-        subtitle: String,
+        summary: String,
+        accent: Color = DesignTokens.sun,
         @ViewBuilder accessory: () -> Accessory
     ) {
-        self.eyebrow = eyebrow
-        self.title = title
-        self.subtitle = subtitle
-        self.accessory = accessory()
+        self.label = title
+        self.headline = title
+        self.summary = summary
+        self.accent = accent
+        self.headlineTrailing = nil
+        self.accessory = AnyView(accessory())
+    }
+
+    init<Accessory: View>(
+        label: String,
+        headline: String,
+        summary: String,
+        accent: Color = DesignTokens.sun,
+        @ViewBuilder accessory: () -> Accessory
+    ) {
+        self.label = label
+        self.headline = headline
+        self.summary = summary
+        self.accent = accent
+        self.headlineTrailing = nil
+        self.accessory = AnyView(accessory())
+    }
+
+    init<HeadlineTrailing: View, Accessory: View>(
+        label: String,
+        headline: String,
+        summary: String,
+        accent: Color = DesignTokens.sun,
+        @ViewBuilder headlineTrailing: () -> HeadlineTrailing,
+        @ViewBuilder accessory: () -> Accessory
+    ) {
+        self.label = label
+        self.headline = headline
+        self.summary = summary
+        self.accent = accent
+        self.headlineTrailing = AnyView(headlineTrailing())
+        self.accessory = AnyView(accessory())
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(eyebrow)
-                    .font(DesignTokens.mono(size: 10, weight: .medium))
-                    .foregroundStyle(DesignTokens.secondaryText)
-
-                Text(title)
-                    .font(DesignTokens.serif(size: 30, weight: .bold))
-                    .foregroundStyle(DesignTokens.ink)
-
-                Text(subtitle)
-                    .font(DesignTokens.mono(size: 11))
-                    .foregroundStyle(DesignTokens.tertiaryText)
-                    .fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Spacer(minLength: 0)
+                Rectangle()
+                    .fill(accent.opacity(0.82))
+                    .frame(width: 34, height: 1.3)
+                Spacer(minLength: 0)
             }
+            HStack(alignment: .top, spacing: 16) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(label.uppercased())
+                        .font(DesignTokens.mono(size: 10, weight: .medium))
+                        .foregroundStyle(accent)
+                        .tracking(2.2)
 
-            Spacer(minLength: 0)
+                    HStack(alignment: .top, spacing: 16) {
+                        Text(headline)
+                            .font(DesignTokens.serifItalic(size: 32, weight: .bold))
+                            .foregroundStyle(DesignTokens.ink)
+                            .lineSpacing(-2)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
 
-            accessory
+                        if let headlineTrailing {
+                            headlineTrailing
+                        }
+                    }
+
+                    if !summary.isEmpty {
+                        Text(summary)
+                            .font(DesignTokens.mono(size: 11))
+                            .foregroundStyle(DesignTokens.tertiaryText)
+                            .lineSpacing(1.5)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
+                Spacer(minLength: 0)
+
+                if let accessory {
+                    accessory
+                }
+            }
         }
     }
 }
 
-extension WeatherSheetHeader where Accessory == EmptyView {
-    init(eyebrow: String, title: String, subtitle: String) {
-        self.init(eyebrow: eyebrow, title: title, subtitle: subtitle) {
-            EmptyView()
+struct WeatherSheetHeader: View {
+    let label: String
+    let headline: String
+    let contextTitle: String?
+    let summary: String
+    var accent: Color = DesignTokens.sun
+    let accessory: AnyView?
+
+    init(title: String, contextTitle: String? = nil, subtitle: String) {
+        self.label = title
+        self.headline = title
+        self.contextTitle = contextTitle
+        self.summary = subtitle
+        self.accent = DesignTokens.sun
+        self.accessory = nil
+    }
+
+    init(label: String, headline: String, contextTitle: String? = nil, summary: String, accent: Color = DesignTokens.sun) {
+        self.label = label
+        self.headline = headline
+        self.contextTitle = contextTitle
+        self.summary = summary
+        self.accent = accent
+        self.accessory = nil
+    }
+
+    init<Accessory: View>(
+        title: String,
+        contextTitle: String? = nil,
+        subtitle: String,
+        accent: Color = DesignTokens.sun,
+        @ViewBuilder accessory: () -> Accessory
+    ) {
+        self.label = title
+        self.headline = title
+        self.contextTitle = contextTitle
+        self.summary = subtitle
+        self.accent = accent
+        self.accessory = AnyView(accessory())
+    }
+
+    init<Accessory: View>(
+        label: String,
+        headline: String,
+        contextTitle: String? = nil,
+        summary: String,
+        accent: Color = DesignTokens.sun,
+        @ViewBuilder accessory: () -> Accessory
+    ) {
+        self.label = label
+        self.headline = headline
+        self.contextTitle = contextTitle
+        self.summary = summary
+        self.accent = accent
+        self.accessory = AnyView(accessory())
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Spacer(minLength: 0)
+                Rectangle()
+                    .fill(accent.opacity(0.82))
+                    .frame(width: 34, height: 1.3)
+                Spacer(minLength: 0)
+            }
+            HStack(alignment: .top, spacing: 16) {
+                VStack(alignment: .leading, spacing: 9) {
+                    Text(label.uppercased())
+                        .font(DesignTokens.mono(size: 10, weight: .medium))
+                        .foregroundStyle(accent)
+                        .tracking(2.2)
+
+                    Text(headline)
+                        .font(DesignTokens.serifItalic(size: 32, weight: .bold))
+                        .foregroundStyle(DesignTokens.ink)
+                        .lineSpacing(-2)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    if let contextTitle, !contextTitle.isEmpty {
+                        Text(contextTitle.uppercased())
+                            .font(DesignTokens.mono(size: 10, weight: .medium))
+                            .foregroundStyle(DesignTokens.secondaryText)
+                            .tracking(1.6)
+                    }
+
+                    if !summary.isEmpty {
+                        Text(summary)
+                            .font(DesignTokens.mono(size: 11))
+                            .foregroundStyle(DesignTokens.tertiaryText)
+                            .lineSpacing(1.5)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+
+                Spacer(minLength: 0)
+
+                if let accessory {
+                    accessory
+                }
+            }
         }
     }
 }
@@ -843,6 +1050,35 @@ struct WeatherSheetMetricBadge: View {
     }
 }
 
+struct WeatherSheetHeadlineValue: View {
+    let value: String
+    var accent: Color = DesignTokens.ink
+
+    var body: some View {
+        Text(value)
+            .font(DesignTokens.serif(size: 28, weight: .bold))
+            .foregroundStyle(accent)
+            .multilineTextAlignment(.trailing)
+            .lineLimit(2)
+            .minimumScaleFactor(0.72)
+            .frame(maxWidth: 140, alignment: .trailing)
+    }
+}
+
+struct WeatherSheetHeadlineDetail: View {
+    let text: String
+
+    var body: some View {
+        Text(text)
+            .font(DesignTokens.mono(size: 10, weight: .medium))
+            .foregroundStyle(DesignTokens.secondaryText)
+            .multilineTextAlignment(.trailing)
+            .lineSpacing(1.3)
+            .frame(maxWidth: 172, alignment: .trailing)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
 struct WeatherSheetSupportingNote: View {
     let systemImage: String
     let text: String
@@ -859,6 +1095,58 @@ struct WeatherSheetSupportingNote: View {
                 .foregroundStyle(DesignTokens.tertiaryText)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+}
+
+struct EditorialMetricSummaryCard: View {
+    let label: String
+    let value: String
+    let detail: String
+    let footnote: String?
+    let accent: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Spacer(minLength: 0)
+                Rectangle()
+                    .fill(accent.opacity(0.76))
+                    .frame(width: 34, height: 1.2)
+                Spacer(minLength: 0)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text(label.uppercased())
+                    .font(DesignTokens.mono(size: 10, weight: .medium))
+                    .foregroundStyle(DesignTokens.sun)
+                    .tracking(2.0)
+
+                Text(value)
+                    .font(value.contains("\n") ? DesignTokens.serifItalic(size: 38, weight: .bold) : DesignTokens.serif(size: 42, weight: .bold))
+                    .foregroundStyle(DesignTokens.ink)
+                    .lineLimit(value.contains("\n") ? 2 : 1)
+                    .minimumScaleFactor(0.7)
+
+                Text(detail)
+                    .font(DesignTokens.mono(size: 11))
+                    .foregroundStyle(DesignTokens.tertiaryText)
+                    .lineSpacing(1.5)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if let footnote, !footnote.isEmpty {
+                Rectangle()
+                    .fill(DesignTokens.border.opacity(0.74))
+                    .frame(height: 0.8)
+
+                Text(footnote)
+                    .font(DesignTokens.mono(size: 10))
+                    .foregroundStyle(DesignTokens.secondaryText)
+                    .lineSpacing(1.2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .vintageCard()
     }
 }
 
@@ -879,28 +1167,12 @@ private func hourlyTemperatureChartEntries(from state: WeatherScreenState, now: 
     }
 }
 
-private func hourlyPrecipitationChartEntries(from state: WeatherScreenState, now: Date) -> [HourlyChartCard.Entry] {
-    let entries = Array(state.hourly.prefix(18))
-    let timeZone = state.snapshot.timeZone
-
-    return Array(entries.enumerated()).map { index, hour in
-        let precipitationAmount = max(0, hour.precipitation)
-
-        return HourlyChartCard.Entry(
-            id: hour.timestamp,
-            displayLabel: hourLabel(for: hour.timestamp, relativeTo: now, timeZone: timeZone),
-            value: precipitationAmount,
-            formattedValue: formattedPrecipitation(precipitationAmount),
-            secondaryFormattedValue: formattedPrecipitationProbability(hour.precipitationProbability),
-            isCurrent: hour.isCurrentHour,
-            isPast: hour.isPast,
-            isRangeHighlighted: precipitationAmount > 0 || hour.precipitationProbability >= 25,
-            dayDividerLabel: dayDividerLabel(before: index, dates: entries.map(\.timestamp), timeZone: timeZone, now: now)
-        )
-    }
-}
-
-private func temperatureEntries(for day: ResolvedDailyForecast, in state: WeatherScreenState, now: Date) -> [HourlyChartCard.Entry] {
+private func temperatureEntries(
+    for day: ResolvedDailyForecast,
+    in state: WeatherScreenState,
+    now: Date,
+    temperatureFormatter: ((Double) -> String)? = nil
+) -> [HourlyChartCard.Entry] {
     let hours = dayTimelineHours(for: day, in: state)
     let timeZone = state.snapshot.timeZone
 
@@ -911,7 +1183,7 @@ private func temperatureEntries(for day: ResolvedDailyForecast, in state: Weathe
             id: hour.timestamp,
             displayLabel: dayChartHourLabel(for: hour, relativeTo: now, timeZone: timeZone),
             value: temperature,
-            formattedValue: "\(Int(temperature.rounded()))°",
+            formattedValue: temperatureFormatter?(temperature) ?? "\(Int(temperature.rounded()))°",
             isCurrent: Calendar.weatherCalendar(timeZone: timeZone).isDate(hour.timestamp, equalTo: now, toGranularity: .hour),
             isPast: hour.timestamp < now,
             dayDividerLabel: nil
@@ -919,27 +1191,46 @@ private func temperatureEntries(for day: ResolvedDailyForecast, in state: Weathe
     }
 }
 
-private func precipitationEntries(for day: ResolvedDailyForecast, in state: WeatherScreenState, now: Date) -> [HourlyChartCard.Entry] {
+private func precipitationLineEntries(for day: ResolvedDailyForecast, in state: WeatherScreenState, now: Date) -> [PrecipitationLineChartCard.Entry] {
     let hours = dayTimelineHours(for: day, in: state)
     let timeZone = state.snapshot.timeZone
-
-    let wetHours = hours.map { max(0, $0.entry?.precipitation ?? 0) }
-    let peakPrecipitation = wetHours.max() ?? 0
 
     return Array(hours.enumerated()).map { _, hour in
         let precipitationProbability = hour.entry?.precipitationProbability ?? 0
         let precipitationAmount = max(0, hour.entry?.precipitation ?? 0)
 
+        return PrecipitationLineChartCard.Entry(
+            id: hour.timestamp,
+            displayLabel: dayChartHourLabel(for: hour, relativeTo: now, timeZone: timeZone),
+            precipitationAmount: precipitationAmount,
+            precipitationProbability: precipitationProbability,
+            isCurrent: Calendar.weatherCalendar(timeZone: timeZone).isDate(hour.timestamp, equalTo: now, toGranularity: .hour),
+            isPast: hour.timestamp < now
+        )
+    }
+}
+
+private func precipitationAmountEntries(
+    for day: ResolvedDailyForecast,
+    in state: WeatherScreenState,
+    now: Date,
+    precipitationFormatter: ((Double) -> String)? = nil
+) -> [HourlyChartCard.Entry] {
+    let hours = dayTimelineHours(for: day, in: state)
+    let timeZone = state.snapshot.timeZone
+
+    return hours.map { hour in
+        let precipitationAmount = max(0, hour.entry?.precipitation ?? 0)
+        let probability = hour.entry?.precipitationProbability ?? 0
+
         return HourlyChartCard.Entry(
             id: hour.timestamp,
             displayLabel: dayChartHourLabel(for: hour, relativeTo: now, timeZone: timeZone),
             value: precipitationAmount,
-            formattedValue: formattedPrecipitation(precipitationAmount),
-            secondaryFormattedValue: formattedPrecipitationProbability(precipitationProbability),
+            formattedValue: precipitationFormatter?(precipitationAmount) ?? formattedPrecipitation(precipitationAmount),
+            secondaryFormattedValue: "\(Int(probability.rounded())) %",
             isCurrent: Calendar.weatherCalendar(timeZone: timeZone).isDate(hour.timestamp, equalTo: now, toGranularity: .hour),
             isPast: hour.timestamp < now,
-            isRangeHighlighted: precipitationAmount > 0 || precipitationProbability >= 25,
-            isPeak: peakPrecipitation > 0 && abs(peakPrecipitation - precipitationAmount) < 0.01,
             dayDividerLabel: nil
         )
     }
@@ -954,13 +1245,6 @@ private func uvEntries(for day: ResolvedDailyForecast, in state: WeatherScreenSt
             return hour.timestamp
         }
     )
-    let peakTimestamp = hours
-        .compactMap { hour -> (Date, Double)? in
-            guard let uvIndex = hour.entry?.uvIndex else { return nil }
-            return (hour.timestamp, uvIndex)
-        }
-        .max(by: { $0.1 < $1.1 })?
-        .0
 
     return hours.map { hour in
         let uvIndex = hour.entry?.uvIndex ?? 0
@@ -973,7 +1257,6 @@ private func uvEntries(for day: ResolvedDailyForecast, in state: WeatherScreenSt
             isCurrent: Calendar.weatherCalendar(timeZone: timeZone).isDate(hour.timestamp, equalTo: now, toGranularity: .hour),
             isPast: hour.timestamp < now,
             isRangeHighlighted: activeTimestamps.contains(hour.timestamp),
-            isPeak: peakTimestamp == hour.timestamp,
             dayDividerLabel: nil
         )
     }
@@ -1062,10 +1345,6 @@ private func formattedPrecipitation(_ value: Double) -> String {
 
     let formatted = String(format: "%.1f", value).replacingOccurrences(of: ".", with: ",")
     return "\(formatted) mm"
-}
-
-private func formattedPrecipitationProbability(_ value: Double) -> String {
-    "\(Int(value.rounded())) % Chance"
 }
 
 private func formattedUVIndex(_ value: Double) -> String {

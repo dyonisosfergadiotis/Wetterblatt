@@ -31,7 +31,7 @@ enum WeatherDateFormatting {
     }
 
     static func topBarDate(_ date: Date, timeZone: TimeZone) -> String {
-        string(from: date, format: "EEE, d. MMM", timeZone: timeZone)
+        string(from: date, format: "EEEE, d. MMMM", timeZone: timeZone)
     }
 
     static func hourLabel(for date: Date, relativeTo referenceDate: Date, timeZone: TimeZone) -> String {

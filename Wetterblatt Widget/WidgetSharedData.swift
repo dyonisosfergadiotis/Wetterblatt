@@ -28,6 +28,87 @@ struct WidgetPersistedPlacesDocument: Decodable {
     )
 }
 
+enum WidgetTemperatureUnitPreference: String, Decodable {
+    case celsius
+    case fahrenheit
+}
+
+enum WidgetWindSpeedUnitPreference: String, Decodable {
+    case kilometersPerHour
+    case metersPerSecond
+}
+
+enum WidgetPrecipitationUnitPreference: String, Decodable {
+    case millimeters
+    case inches
+}
+
+enum WidgetPlaceSelectionKind: String, Decodable {
+    case followActivePlace
+    case currentLocation
+    case savedPlace
+}
+
+struct WidgetPlaceSelection: Decodable {
+    var kind: WidgetPlaceSelectionKind
+    var savedPlaceID: UUID?
+
+    static let fallback = WidgetPlaceSelection(kind: .followActivePlace, savedPlaceID: nil)
+}
+
+struct WidgetPersistedSettingsDocument: Decodable {
+    var temperatureUnit: WidgetTemperatureUnitPreference
+    var windSpeedUnit: WidgetWindSpeedUnitPreference
+    var precipitationUnit: WidgetPrecipitationUnitPreference
+    var widgetPlaceSelection: WidgetPlaceSelection
+
+    static let fallback = WidgetPersistedSettingsDocument(
+        temperatureUnit: .celsius,
+        windSpeedUnit: .kilometersPerHour,
+        precipitationUnit: .millimeters,
+        widgetPlaceSelection: .fallback
+    )
+
+    enum CodingKeys: String, CodingKey {
+        case temperatureUnit
+        case windSpeedUnit
+        case precipitationUnit
+        case widgetPlaceSelection
+    }
+
+    init(
+        temperatureUnit: WidgetTemperatureUnitPreference,
+        windSpeedUnit: WidgetWindSpeedUnitPreference,
+        precipitationUnit: WidgetPrecipitationUnitPreference,
+        widgetPlaceSelection: WidgetPlaceSelection
+    ) {
+        self.temperatureUnit = temperatureUnit
+        self.windSpeedUnit = windSpeedUnit
+        self.precipitationUnit = precipitationUnit
+        self.widgetPlaceSelection = widgetPlaceSelection
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        temperatureUnit = try container.decodeIfPresent(WidgetTemperatureUnitPreference.self, forKey: .temperatureUnit) ?? .celsius
+        windSpeedUnit = try container.decodeIfPresent(WidgetWindSpeedUnitPreference.self, forKey: .windSpeedUnit) ?? .kilometersPerHour
+        precipitationUnit = try container.decodeIfPresent(WidgetPrecipitationUnitPreference.self, forKey: .precipitationUnit) ?? .millimeters
+        widgetPlaceSelection = try container.decodeIfPresent(WidgetPlaceSelection.self, forKey: .widgetPlaceSelection) ?? .fallback
+    }
+}
+
+struct WidgetDisplaySettings {
+    var temperatureUnit: WidgetTemperatureUnitPreference
+    var windSpeedUnit: WidgetWindSpeedUnitPreference
+    var precipitationUnit: WidgetPrecipitationUnitPreference
+
+    static let fallback = WidgetDisplaySettings(
+        temperatureUnit: .celsius,
+        windSpeedUnit: .kilometersPerHour,
+        precipitationUnit: .millimeters
+    )
+}
+
 struct WidgetWeatherSnapshot: Decodable {
     var placeName: String
     var latitude: Double
@@ -156,6 +237,7 @@ struct WidgetWeatherDisplayState {
     var placeName: String
     var subtitle: String
     var timeZone: TimeZone
+    var displaySettings: WidgetDisplaySettings
     var fetchedAt: Date
     var freshness: WidgetForecastFreshness
     var current: WidgetResolvedCurrentWeather
@@ -169,15 +251,15 @@ struct WidgetWeatherDisplayState {
     }
 
     var temperatureText: String {
-        "\(Int(current.temperature.rounded()))°"
+        formatTemperature(current.temperature)
     }
 
     var apparentText: String {
-        "\(Int(current.apparentTemperature.rounded()))°"
+        formatTemperature(current.apparentTemperature)
     }
 
     var windText: String {
-        "\(Int(current.windSpeed.rounded())) km/h"
+        formatWindSpeed(current.windSpeed)
     }
 
     var humidityText: String {
@@ -191,7 +273,7 @@ struct WidgetWeatherDisplayState {
 
     var highLowText: String {
         guard let today else { return "—" }
-        return "\(Int(today.temperatureMin.rounded()))° / \(Int(today.temperatureMax.rounded()))°"
+        return "\(formatTemperature(today.temperatureMin)) / \(formatTemperature(today.temperatureMax))"
     }
 
     var rainChanceText: String {
@@ -240,14 +322,10 @@ struct WidgetWeatherDisplayState {
     var precipitationAmountText: String {
         let total = hourly.reduce(0) { $0 + $1.precipitation }
         if total < 0.1 {
-            return "0 mm"
+            return formatPrecipitation(0)
         }
 
-        if total < 1 {
-            return String(format: "%.1f mm", locale: Locale(identifier: "de_DE"), total)
-        }
-
-        return "\(Int(total.rounded())) mm"
+        return formatPrecipitation(total)
     }
 
     var weeklyTemperatureRange: ClosedRange<Double> {
@@ -262,6 +340,51 @@ struct WidgetWeatherDisplayState {
         }
 
         return "Spanne \(highLowText)"
+    }
+
+    private func formatTemperature(_ celsius: Double) -> String {
+        switch displaySettings.temperatureUnit {
+        case .celsius:
+            return "\(Int(celsius.rounded()))°"
+        case .fahrenheit:
+            return "\(Int((celsius * 9 / 5 + 32).rounded()))°"
+        }
+    }
+
+    private func formatWindSpeed(_ kilometersPerHour: Double) -> String {
+        switch displaySettings.windSpeedUnit {
+        case .kilometersPerHour:
+            return "\(Int(kilometersPerHour.rounded())) km/h"
+        case .metersPerSecond:
+            let metersPerSecond = kilometersPerHour / 3.6
+            if metersPerSecond >= 10 || abs(metersPerSecond.rounded() - metersPerSecond) < 0.05 {
+                return "\(Int(metersPerSecond.rounded())) m/s"
+            }
+
+            return "\(String(format: "%.1f", locale: Locale(identifier: "de_DE"), metersPerSecond)) m/s"
+        }
+    }
+
+    private func formatPrecipitation(_ millimeters: Double) -> String {
+        switch displaySettings.precipitationUnit {
+        case .millimeters:
+            if millimeters < 0.15 {
+                return "0 mm"
+            }
+
+            if millimeters >= 10 || abs(millimeters.rounded() - millimeters) < 0.05 {
+                return "\(Int(millimeters.rounded())) mm"
+            }
+
+            return String(format: "%.1f mm", locale: Locale(identifier: "de_DE"), millimeters)
+        case .inches:
+            let inches = millimeters / 25.4
+            if inches < 0.01 {
+                return "0 in"
+            }
+
+            return "\(String(format: "%.2f", locale: Locale(identifier: "de_DE"), inches)) in"
+        }
     }
 }
 
@@ -316,6 +439,7 @@ struct WidgetDataSelection {
     var placeName: String
     var subtitle: String
     var snapshot: WidgetWeatherSnapshot
+    var settings: WidgetDisplaySettings
 }
 
 struct WidgetSharedDataSource {
@@ -334,14 +458,30 @@ struct WidgetSharedDataSource {
         guard let rootURL = WidgetSharedStore.rootURL(fileManager: fileManager) else { return nil }
 
         let document = loadPlacesDocument(rootURL: rootURL)
+        let settingsDocument = loadSettingsDocument(rootURL: rootURL)
+        let displaySettings = WidgetDisplaySettings(
+            temperatureUnit: settingsDocument.temperatureUnit,
+            windSpeedUnit: settingsDocument.windSpeedUnit,
+            precipitationUnit: settingsDocument.precipitationUnit
+        )
         let cacheDirectory = rootURL.appendingPathComponent("ForecastCache", isDirectory: true)
+
+        if let selection = loadSelection(
+            for: settingsDocument.widgetPlaceSelection,
+            document: document,
+            cacheDirectory: cacheDirectory,
+            settings: displaySettings
+        ) {
+            return selection
+        }
 
         if document.prefersCurrentLocation,
            let snapshot = loadSnapshot(for: "current-location", cacheDirectory: cacheDirectory) {
             return WidgetDataSelection(
                 placeName: snapshot.placeName,
                 subtitle: "Zuletzt bekannter Ort",
-                snapshot: snapshot
+                snapshot: snapshot,
+                settings: displaySettings
             )
         }
 
@@ -351,7 +491,8 @@ struct WidgetSharedDataSource {
             return WidgetDataSelection(
                 placeName: preferredPlace.name,
                 subtitle: preferredPlace.subtitle,
-                snapshot: snapshot
+                snapshot: snapshot,
+                settings: displaySettings
             )
         }
 
@@ -360,7 +501,8 @@ struct WidgetSharedDataSource {
                 return WidgetDataSelection(
                     placeName: place.name,
                     subtitle: place.subtitle,
-                    snapshot: snapshot
+                    snapshot: snapshot,
+                    settings: displaySettings
                 )
             }
         }
@@ -369,7 +511,8 @@ struct WidgetSharedDataSource {
             return WidgetDataSelection(
                 placeName: snapshot.placeName,
                 subtitle: "Zuletzt bekannter Ort",
-                snapshot: snapshot
+                snapshot: snapshot,
+                settings: displaySettings
             )
         }
 
@@ -385,6 +528,7 @@ struct WidgetSharedDataSource {
             placeName: selection.placeName,
             subtitle: selection.subtitle,
             timeZone: snapshot.timeZone,
+            displaySettings: selection.settings,
             fetchedAt: snapshot.fetchedAt,
             freshness: freshness,
             current: current,
@@ -395,10 +539,54 @@ struct WidgetSharedDataSource {
         )
     }
 
+    private func loadSelection(
+        for widgetSelection: WidgetPlaceSelection,
+        document: WidgetPersistedPlacesDocument,
+        cacheDirectory: URL,
+        settings: WidgetDisplaySettings
+    ) -> WidgetDataSelection? {
+        switch widgetSelection.kind {
+        case .followActivePlace:
+            return nil
+        case .currentLocation:
+            guard let snapshot = loadSnapshot(for: "current-location", cacheDirectory: cacheDirectory) else {
+                return nil
+            }
+            return WidgetDataSelection(
+                placeName: snapshot.placeName,
+                subtitle: "Zuletzt bekannter Ort",
+                snapshot: snapshot,
+                settings: settings
+            )
+        case .savedPlace:
+            guard let savedPlaceID = widgetSelection.savedPlaceID,
+                  let place = document.savedPlaces.first(where: { $0.id == savedPlaceID }),
+                  let snapshot = loadSnapshot(for: savedPlaceID.uuidString, cacheDirectory: cacheDirectory) else {
+                return nil
+            }
+            return WidgetDataSelection(
+                placeName: place.name,
+                subtitle: place.subtitle,
+                snapshot: snapshot,
+                settings: settings
+            )
+        }
+    }
+
     private func loadPlacesDocument(rootURL: URL) -> WidgetPersistedPlacesDocument {
         let fileURL = rootURL.appendingPathComponent("places.json")
         guard let data = try? Data(contentsOf: fileURL),
               let document = try? decoder.decode(WidgetPersistedPlacesDocument.self, from: data) else {
+            return .fallback
+        }
+
+        return document
+    }
+
+    private func loadSettingsDocument(rootURL: URL) -> WidgetPersistedSettingsDocument {
+        let fileURL = rootURL.appendingPathComponent("settings.json")
+        guard let data = try? Data(contentsOf: fileURL),
+              let document = try? decoder.decode(WidgetPersistedSettingsDocument.self, from: data) else {
             return .fallback
         }
 

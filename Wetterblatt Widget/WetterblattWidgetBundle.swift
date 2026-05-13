@@ -1,15 +1,8 @@
-//
-//  Wetterblatt_WidgetBundle.swift
-//  Wetterblatt Widget
-//
-//  Created by Dyonisos Fergadiotis on 23.04.26.
-//
-
 import WidgetKit
 import SwiftUI
 
 @main
-struct Wetterblatt_WidgetBundle: WidgetBundle {
+struct WetterblattWidgetBundle: WidgetBundle {
     var body: some Widget {
         WetterblattCurrentWidget()
         WetterblattHourlyWidget()

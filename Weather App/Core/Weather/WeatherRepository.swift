@@ -5,6 +5,7 @@ struct WeatherRepository {
     private let cacheStore: ForecastCacheStore
     private let merger = SnapshotMerger()
     private let currentResolver = CurrentWeatherResolver()
+    private let airQualityResolver = AirQualityResolver()
     private let timelineResolver = ForecastTimelineResolver()
     private let freshnessPolicy = ForecastFreshnessPolicy()
 
@@ -33,6 +34,8 @@ struct WeatherRepository {
             snapshot: snapshot,
             freshness: freshness,
             current: current,
+            airQualityCurrent: airQualityResolver.resolveCurrent(snapshot: snapshot, now: now),
+            airQualityHourly: airQualityResolver.resolveHourly(snapshot: snapshot, now: now),
             hourly: timelineResolver.resolveHourly(snapshot: snapshot, now: now),
             daily: timelineResolver.resolveDaily(snapshot: snapshot, now: now),
             nextSunEvent: timelineResolver.nextSunEvent(snapshot: snapshot, now: now),
@@ -55,4 +58,3 @@ struct WeatherRepository {
         )
     }
 }
-

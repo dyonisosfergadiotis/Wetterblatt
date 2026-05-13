@@ -1,5 +1,6 @@
 import CoreLocation
 import Foundation
+import MapKit
 
 struct GeocodingService {
     private let session: URLSession
@@ -11,7 +12,10 @@ struct GeocodingService {
     func search(query: String) async throws -> [PlaceSearchResult] {
         guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return [] }
 
-        var components = URLComponents(string: "https://geocoding-api.open-meteo.com/v1/search")!
+        var components = URLComponents()
+        components.scheme = "https"
+        components.host = "geocoding-api.open-meteo.com"
+        components.path = "/v1/search"
         components.queryItems = [
             URLQueryItem(name: "name", value: query),
             URLQueryItem(name: "count", value: "8"),
@@ -19,7 +23,11 @@ struct GeocodingService {
             URLQueryItem(name: "format", value: "json"),
         ]
 
-        let (data, _) = try await session.data(from: components.url!)
+        guard let url = components.url else {
+            throw GeocodingServiceError.invalidURL
+        }
+
+        let (data, _) = try await session.data(from: url)
         let response = try JSONDecoder().decode(SearchResponse.self, from: data)
 
         return response.results?.map {
@@ -47,7 +55,10 @@ struct GeocodingService {
     }
 
     private func reverseGeocodeWithOpenMeteo(latitude: Double, longitude: Double) async throws -> PlaceSearchResult? {
-        var components = URLComponents(string: "https://geocoding-api.open-meteo.com/v1/reverse")!
+        var components = URLComponents()
+        components.scheme = "https"
+        components.host = "geocoding-api.open-meteo.com"
+        components.path = "/v1/reverse"
         components.queryItems = [
             URLQueryItem(name: "latitude", value: coordinateString(latitude)),
             URLQueryItem(name: "longitude", value: coordinateString(longitude)),
@@ -55,7 +66,11 @@ struct GeocodingService {
             URLQueryItem(name: "format", value: "json"),
         ]
 
-        let (data, _) = try await session.data(from: components.url!)
+        guard let url = components.url else {
+            throw GeocodingServiceError.invalidURL
+        }
+
+        let (data, _) = try await session.data(from: url)
         let response = try JSONDecoder().decode(SearchResponse.self, from: data)
         guard let first = response.results?.first else { return nil }
 
@@ -70,23 +85,47 @@ struct GeocodingService {
 
     private func reverseGeocodeWithCoreLocation(latitude: Double, longitude: Double) async throws -> PlaceSearchResult? {
         let location = CLLocation(latitude: latitude, longitude: longitude)
-        let placemarks = try await CLGeocoder().reverseGeocodeLocation(
-            location,
-            preferredLocale: Locale(identifier: "de_DE")
-        )
+        let locale = Locale(identifier: "de_DE")
 
-        guard let placemark = placemarks.first,
-              let name = resolvedPlaceName(from: placemark) else {
-            return nil
+        if #available(iOS 26.0, macOS 26.0, *) {
+            guard let request = MKReverseGeocodingRequest(location: location) else {
+                return nil
+            }
+
+            request.preferredLocale = locale
+            let mapItems = try await request.mapItems
+
+            guard let item = mapItems.first,
+                  let name = resolvedPlaceName(from: item) else {
+                return nil
+            }
+
+            return PlaceSearchResult(
+                name: name,
+                subtitle: resolvedSubtitle(from: item, name: name),
+                latitude: latitude,
+                longitude: longitude,
+                timezoneIdentifier: item.timeZone?.identifier
+            )
+        } else {
+            let placemarks = try await CLGeocoder().reverseGeocodeLocation(
+                location,
+                preferredLocale: locale
+            )
+
+            guard let placemark = placemarks.first,
+                  let name = resolvedPlaceName(from: placemark) else {
+                return nil
+            }
+
+            return PlaceSearchResult(
+                name: name,
+                subtitle: resolvedSubtitle(from: placemark),
+                latitude: latitude,
+                longitude: longitude,
+                timezoneIdentifier: placemark.timeZone?.identifier
+            )
         }
-
-        return PlaceSearchResult(
-            name: name,
-            subtitle: resolvedSubtitle(from: placemark),
-            latitude: latitude,
-            longitude: longitude,
-            timezoneIdentifier: placemark.timeZone?.identifier
-        )
     }
 
     private func coordinateString(_ value: Double) -> String {
@@ -96,15 +135,30 @@ struct GeocodingService {
     private func resolvedPlaceName(from placemark: CLPlacemark) -> String? {
         let candidates = [
             placemark.locality,
-            placemark.subAdministrativeArea,
-            placemark.administrativeArea,
-            placemark.subLocality,
-            placemark.name,
         ]
 
         return candidates
             .compactMap(normalizedComponent)
             .first(where: { !isGenericLocationName($0) })
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
+    private func resolvedPlaceName(from item: MKMapItem) -> String? {
+        let candidates = [
+            item.addressRepresentations?.cityName,
+            cityName(fromContext: item.addressRepresentations?.cityWithContext),
+        ]
+
+        return candidates
+            .compactMap(normalizedComponent)
+            .first(where: { !isGenericLocationName($0) })
+    }
+
+    private func cityName(fromContext value: String?) -> String? {
+        normalizedComponent(value)?
+            .components(separatedBy: ",")
+            .first
+            .flatMap(normalizedComponent)
     }
 
     private func resolvedSubtitle(from placemark: CLPlacemark) -> String {
@@ -115,6 +169,22 @@ struct GeocodingService {
 
         var uniqueComponents: [String] = []
         for component in components where !uniqueComponents.contains(component) {
+            uniqueComponents.append(component)
+        }
+
+        return uniqueComponents.joined(separator: ", ")
+    }
+
+    @available(iOS 26.0, macOS 26.0, *)
+    private func resolvedSubtitle(from item: MKMapItem, name: String) -> String {
+        let components = [
+            normalizedComponent(item.addressRepresentations?.cityWithContext),
+            normalizedComponent(item.addressRepresentations?.regionName),
+            normalizedComponent(item.address?.shortAddress),
+        ].compactMap { $0 }
+
+        var uniqueComponents: [String] = []
+        for component in components where component != name && !uniqueComponents.contains(component) {
             uniqueComponents.append(component)
         }
 
@@ -156,4 +226,8 @@ private struct SearchResultDTO: Decodable {
     var country: String?
     var admin1: String?
     var timezone: String?
+}
+
+private enum GeocodingServiceError: Error {
+    case invalidURL
 }

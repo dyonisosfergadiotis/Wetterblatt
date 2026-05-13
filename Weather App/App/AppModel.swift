@@ -16,6 +16,7 @@ final class AppModel {
 
     private let repository: WeatherRepository
     private let placesStore: PlacesStore
+    private let settingsStore: SettingsStore
     private let locationService: LocationService
     private let geocodingService: GeocodingService
 
@@ -34,6 +35,15 @@ final class AppModel {
     var isSearching = false
     var locationAuthorization: CLAuthorizationStatus = .notDetermined
     var hasLiveCurrentLocationFix = false
+    var isHapticsEnabled = PersistedSettingsDocument.default.isHapticsEnabled
+    var showsPollen = PersistedSettingsDocument.default.showsPollen
+    var selectedPollenTypes = Set(PersistedSettingsDocument.default.selectedPollenTypes)
+    var temperatureUnit = PersistedSettingsDocument.default.temperatureUnit
+    var windSpeedUnit = PersistedSettingsDocument.default.windSpeedUnit
+    var precipitationUnit = PersistedSettingsDocument.default.precipitationUnit
+    var reducesMotionEffects = PersistedSettingsDocument.default.reducesMotionEffects
+    var widgetPlaceSelection = PersistedSettingsDocument.default.widgetPlaceSelection
+    var heroThemes = PersistedSettingsDocument.default.heroThemes
 
     private var didStart = false
     private var isSceneActive = false
@@ -43,6 +53,7 @@ final class AppModel {
     init(
         repository: WeatherRepository,
         placesStore: PlacesStore,
+        settingsStore: SettingsStore,
         locationService: LocationService,
         geocodingService: GeocodingService,
         reachability: ReachabilityMonitor,
@@ -50,6 +61,7 @@ final class AppModel {
     ) {
         self.repository = repository
         self.placesStore = placesStore
+        self.settingsStore = settingsStore
         self.locationService = locationService
         self.geocodingService = geocodingService
         self.reachability = reachability
@@ -88,6 +100,7 @@ final class AppModel {
         didStart = true
         isSceneActive = true
 
+        apply(settings: settingsStore.load())
         bindServices()
         clock.start()
 
@@ -97,22 +110,186 @@ final class AppModel {
             ? .currentLocation
             : .saved(persisted.preferredSavedPlaceID ?? savedPlaces.first?.id ?? SavedPlace.berlin.id)
 
+        locationService.requestAccessAndLocation()
         await hydrateCachedSnapshots()
         await loadSelectedPlaceIfNeeded(forceRefresh: false, showsFeedback: false)
-
-        locationService.requestAccessAndLocation()
         isBootstrapping = false
     }
 
     func handleScenePhase(_ phase: ScenePhase) async {
         isSceneActive = phase == .active
-        guard phase == .active else { return }
+        guard phase == .active else {
+            clock.stop()
+            return
+        }
+
+        clock.start()
         locationService.requestLocation()
         await loadSelectedPlaceIfNeeded(forceRefresh: false, showsFeedback: false)
     }
 
     func refreshSelectedPlace(force: Bool = true) async {
         await loadSelectedPlaceIfNeeded(forceRefresh: force, showsFeedback: true)
+    }
+
+    func setHapticsEnabled(_ isEnabled: Bool) {
+        guard isHapticsEnabled != isEnabled else { return }
+        if !isEnabled {
+            HapticManager.selectionChanged()
+        }
+        isHapticsEnabled = isEnabled
+        HapticManager.setEnabled(isEnabled)
+        if isEnabled {
+            HapticManager.selectionChanged()
+        }
+        persistSettings()
+    }
+
+    func setPollenVisibilityEnabled(_ isEnabled: Bool) {
+        guard showsPollen != isEnabled else { return }
+        showsPollen = isEnabled
+        persistSettings()
+    }
+
+    func setPollenTypeEnabled(_ type: PollenType, isEnabled: Bool) {
+        var updated = selectedPollenTypes
+        if isEnabled {
+            updated.insert(type)
+        } else {
+            updated.remove(type)
+        }
+
+        guard updated != selectedPollenTypes else { return }
+        selectedPollenTypes = updated
+        persistSettings()
+    }
+
+    func setTemperatureUnit(_ unit: TemperatureUnitPreference) {
+        guard temperatureUnit != unit else { return }
+        temperatureUnit = unit
+        persistSettings()
+    }
+
+    func setWindSpeedUnit(_ unit: WindSpeedUnitPreference) {
+        guard windSpeedUnit != unit else { return }
+        windSpeedUnit = unit
+        persistSettings()
+    }
+
+    func setPrecipitationUnit(_ unit: PrecipitationUnitPreference) {
+        guard precipitationUnit != unit else { return }
+        precipitationUnit = unit
+        persistSettings()
+    }
+
+    func setReducesMotionEffects(_ isEnabled: Bool) {
+        guard reducesMotionEffects != isEnabled else { return }
+        reducesMotionEffects = isEnabled
+        persistSettings()
+    }
+
+    func setWidgetPlaceSelection(_ selection: WidgetPlaceSelection) {
+        guard widgetPlaceSelection != selection else { return }
+        widgetPlaceSelection = selection
+        persistSettings()
+    }
+
+    func addHeroTheme(_ theme: HeroThemeRule) {
+        heroThemes.append(theme)
+        persistSettings()
+    }
+
+    func removeHeroTheme(_ theme: HeroThemeRule) {
+        heroThemes.removeAll { $0.id == theme.id }
+        persistSettings()
+    }
+
+    func isPollenTypeEnabled(_ type: PollenType) -> Bool {
+        selectedPollenTypes.contains(type)
+    }
+
+    var orderedSelectedPollenTypes: [PollenType] {
+        PollenType.allCases.filter(selectedPollenTypes.contains)
+    }
+
+    func formattedTemperature(_ celsius: Double, includesUnit: Bool = false) -> String {
+        let value: Double
+        let suffix: String
+
+        switch temperatureUnit {
+        case .celsius:
+            value = celsius
+            suffix = includesUnit ? "°C" : "°"
+        case .fahrenheit:
+            value = celsius * 9 / 5 + 32
+            suffix = includesUnit ? "°F" : "°"
+        }
+
+        return "\(Int(value.rounded()))\(suffix)"
+    }
+
+    func formattedTemperatureDelta(_ celsiusDelta: Double) -> String {
+        let value: Double
+        switch temperatureUnit {
+        case .celsius:
+            value = celsiusDelta
+        case .fahrenheit:
+            value = celsiusDelta * 9 / 5
+        }
+
+        return "\(Int(abs(value).rounded()))°"
+    }
+
+    func formattedWindSpeed(_ kilometersPerHour: Double) -> String {
+        switch windSpeedUnit {
+        case .kilometersPerHour:
+            return "\(Int(kilometersPerHour.rounded())) km/h"
+        case .metersPerSecond:
+            let metersPerSecond = kilometersPerHour / 3.6
+            if metersPerSecond >= 10 || abs(metersPerSecond.rounded() - metersPerSecond) < 0.05 {
+                return "\(Int(metersPerSecond.rounded())) m/s"
+            }
+
+            return "\(String(format: "%.1f", metersPerSecond).replacingOccurrences(of: ".", with: ",")) m/s"
+        }
+    }
+
+    func formattedPrecipitation(_ millimeters: Double) -> String {
+        switch precipitationUnit {
+        case .millimeters:
+            if millimeters < 0.15 {
+                return "0 mm"
+            }
+
+            if millimeters >= 10 || abs(millimeters.rounded() - millimeters) < 0.05 {
+                return "\(Int(millimeters.rounded())) mm"
+            }
+
+            return "\(String(format: "%.1f", millimeters).replacingOccurrences(of: ".", with: ",")) mm"
+        case .inches:
+            let inches = millimeters / 25.4
+            if inches < 0.01 {
+                return "0 in"
+            }
+
+            return "\(String(format: "%.2f", inches).replacingOccurrences(of: ".", with: ",")) in"
+        }
+    }
+
+    var temperatureAxisLabel: String {
+        temperatureUnit.shortTitle
+    }
+
+    var windSpeedAxisLabel: String {
+        windSpeedUnit.title
+    }
+
+    var precipitationAxisLabel: String {
+        precipitationUnit.title
+    }
+
+    func requestLocationAccessAndRefresh() {
+        locationService.requestAccessAndLocation()
     }
 
     func selectSavedPlace(_ place: SavedPlace) async {
@@ -135,6 +312,12 @@ final class AppModel {
         savedPlaces.removeAll { $0.id == place.id }
         placeSummaries.removeValue(forKey: place.forecastPlace.cacheKey)
         snapshotsByKey.removeValue(forKey: place.forecastPlace.cacheKey)
+
+        if widgetPlaceSelection.kind == .savedPlace,
+           widgetPlaceSelection.savedPlaceID == place.id {
+            widgetPlaceSelection = .default
+            persistSettings()
+        }
 
         if case .saved(let selectedID) = activePlaceSelection, selectedID == place.id {
             activePlaceSelection = .currentLocation
@@ -412,6 +595,36 @@ final class AppModel {
         #if canImport(WidgetKit)
         WidgetCenter.shared.reloadAllTimelines()
         #endif
+    }
+
+    private func apply(settings: PersistedSettingsDocument) {
+        isHapticsEnabled = settings.isHapticsEnabled
+        showsPollen = settings.showsPollen
+        selectedPollenTypes = Set(settings.selectedPollenTypes)
+        temperatureUnit = settings.temperatureUnit
+        windSpeedUnit = settings.windSpeedUnit
+        precipitationUnit = settings.precipitationUnit
+        reducesMotionEffects = settings.reducesMotionEffects
+        widgetPlaceSelection = settings.widgetPlaceSelection
+        heroThemes = settings.heroThemes
+        HapticManager.setEnabled(settings.isHapticsEnabled)
+    }
+
+    private func persistSettings() {
+        settingsStore.save(
+            PersistedSettingsDocument(
+                isHapticsEnabled: isHapticsEnabled,
+                showsPollen: showsPollen,
+                selectedPollenTypes: orderedSelectedPollenTypes,
+                temperatureUnit: temperatureUnit,
+                windSpeedUnit: windSpeedUnit,
+                precipitationUnit: precipitationUnit,
+                reducesMotionEffects: reducesMotionEffects,
+                widgetPlaceSelection: widgetPlaceSelection,
+                heroThemes: heroThemes
+            )
+        )
+        reloadWidgets()
     }
 
     private func normalizedLocationName(from rawValue: String?) -> String? {

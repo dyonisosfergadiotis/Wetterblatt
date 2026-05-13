@@ -4,6 +4,7 @@ import Foundation
 final class AppContainer {
     let repository: WeatherRepository
     let placesStore: PlacesStore
+    let settingsStore: SettingsStore
     let locationService: LocationService
     let geocodingService: GeocodingService
     let reachability: ReachabilityMonitor
@@ -15,6 +16,7 @@ final class AppContainer {
 
         self.repository = WeatherRepository(weatherService: weatherService, cacheStore: cacheStore)
         self.placesStore = PlacesStore()
+        self.settingsStore = SettingsStore()
         self.locationService = LocationService()
         self.geocodingService = GeocodingService()
         self.reachability = ReachabilityMonitor()
@@ -25,6 +27,7 @@ final class AppContainer {
         AppModel(
             repository: repository,
             placesStore: placesStore,
+            settingsStore: settingsStore,
             locationService: locationService,
             geocodingService: geocodingService,
             reachability: reachability,
@@ -32,4 +35,3 @@ final class AppContainer {
         )
     }
 }
-

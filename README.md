@@ -32,3 +32,23 @@ Wetterblatt ist eine moderne, datenschutzfreundliche Wetter‑App mit Widgets. S
 ## Screenshots
 Füge hier 1–3 aussagekräftige Screenshots oder GIFs ein.
 
+<img src="Docs/screenshot1.png" width="320" />
+<img src="Docs/screenshot2.png" width="320" />
+
+## Tech-Stack
+- Sprache: Swift (Swift Concurrency, Actors)
+- Frameworks: SwiftUI, Combine, Core Location, MapKit, WidgetKit
+- Datenhaltung: JSON‑Dokumente (Settings, Places, Forecast Cache)
+- App Group: `group.DyonisosFergadiotis.Wetterblatt` (Shared Store für Widgets)
+
+## Voraussetzungen
+- Xcode 15+ (empfohlen: aktuelle Version)
+- iOS/iPadOS 17+ und/oder macOS 14+
+- Optional: App Group Capability für Widgets (siehe Konfiguration)
+
+## Installation
+Klonen des Repos und öffnen in Xcode:
+
+```bash
+git clone <Repo-URL>
+cd Wetterblatt
